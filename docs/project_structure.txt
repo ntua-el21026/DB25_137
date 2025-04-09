@@ -6,11 +6,12 @@
 │   ├── qx_script.py
 │   └── struct_script.py
 ├── diagrams
-│   └── README.md
+│   ├── README.md
+│   └── er.pdf
 ├── docs
 │   ├── README.md
-│   ├── project_struct.txt
-│   └── structure.txt
+│   ├── cardinality_constraints.txt
+│   └── project_structure.txt
 └── sql
     ├── Q1.sql
     ├── Q10.sql
@@ -46,4 +47,4 @@
     ├── install.sql
     └── load.sql
 
-4 directories, 42 files
+4 directories, 43 files
