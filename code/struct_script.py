@@ -9,7 +9,7 @@ import subprocess
 script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(script_dir, ".."))
 docs_folder = os.path.join(project_root, "docs")
-output_file = os.path.join(docs_folder, "structure.txt")
+output_file = os.path.join(docs_folder, "project_structure.txt")
 
 # Make sure docs folder exists
 os.makedirs(docs_folder, exist_ok=True)
