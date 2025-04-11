@@ -1,15 +1,15 @@
 import os
 
 def main():
-    # Get script location and move two levels up
+    # Get script location and move two levels up to project root
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.abspath(os.path.join(script_dir, "..", ".."))
 
-    # Target the 'docs' folder inside the project root
-    docs_path = os.path.join(project_root, "docs")
-    os.makedirs(docs_path, exist_ok=True)
+    # Path to docs/organization
+    organization_folder = os.path.join(project_root, "docs", "organization")
+    os.makedirs(organization_folder, exist_ok=True)
 
-    output_file = os.path.join(docs_path, "db_data.txt")
+    output_file = os.path.join(organization_folder, "dbdata.txt")
 
     # Expanded dataset plan
     lines = [
@@ -61,7 +61,7 @@ def main():
         for line in lines:
             f.write(line + "\n")
 
-    print(f"'db_data.txt' successfully created at: {output_file}")
+    print(f"'dbdata.txt' successfully created at: {output_file}")
 
 if __name__ == "__main__":
     main()
