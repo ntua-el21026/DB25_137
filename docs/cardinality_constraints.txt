@@ -1,4 +1,4 @@
-Cardinality Constraints
+Cardinality_Constraints
 
 event-festival (part_of_fest): total on event, many to one
 festival-location (fest_loc): total on festival, many to one
@@ -6,12 +6,13 @@ event-stage (takes_place_on): total on event, many to one
 stage-equipment (stage_equipment): many to many
 staff-event (works_on): many to many
 performance-event (part_of_event): total on performance, many to one
-performance-artist (performned_by): total on performance, many to many
+performance-performance (next_perf): one to one
+performance-artist (performed_by): total on performance, many to many
 artist-band (member_of): total on band, many to many
 ticket-event (ticket_for_event): total on ticket, many to one
 ticket-atendee (belongs_to): total on ticket, many to one
-ticket-resale_queue (ticket_for_queue): many to one
-resale_queue-event (queue_for_event): total on queue, many to one
-resale_queue-atendee (joins_queue): many to many
+resale_offer-event (queue_for_event): total on queue, many to one
+resale_offer-atendee (offered_by): total on resale_offer, many to one, with ticket_id
+resale_offer-interest (exrpessed_by): total on resale_offer, many to one
 review-atendee (written_by): total on review, many to one
 review-performance (rates): total on review, many to one
