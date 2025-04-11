@@ -7,12 +7,14 @@ stage-equipment (stage_equipment): many to many
 staff-event (works_on): many to many
 performance-event (part_of_event): total on performance, many to one
 performance-performance (next_perf): one to one
-performance-artist (performed_by): total on performance, many to many
+performance-artist (performed_by_artist): many to one
+performance-band (performed_by_band): many to one
 artist-band (member_of): total on band, many to many
 ticket-event (ticket_for_event): total on ticket, many to one
 ticket-atendee (belongs_to): total on ticket, many to one
 resale_offer-event (queue_for_event): total on queue, many to one
 resale_offer-atendee (offered_by): total on resale_offer, many to one, with ticket_id
-resale_offer-interest (exrpessed_by): total on resale_offer, many to one
+resale_interest-atendee (exrpessed_by): total on resale_interest, many to one
+resale_offer-resale_interest (interest_for_offer): many to one
 review-atendee (written_by): total on review, many to one
 review-performance (rates): total on review, many to one
