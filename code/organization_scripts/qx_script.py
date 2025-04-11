@@ -1,8 +1,12 @@
 import os
 
-# Script is running from inside the 'code' folder
-# We go one level up and into 'SQL'
-sql_output_folder = os.path.abspath(os.path.join("..", "SQL"))
+# Script is running from inside a subfolder of 'code' (e.g., 'code/extra/')
+# Go two levels up to project root, then into 'SQL'
+script_dir = os.path.dirname(os.path.abspath(__file__))
+sql_output_folder = os.path.abspath(os.path.join(script_dir, "..", "..", "SQL"))
+
+# Ensure SQL folder exists
+os.makedirs(sql_output_folder, exist_ok=True)
 
 # Generate files Q1.sql to Q15.sql and Q1_out.txt to Q15_out.txt
 for i in range(1, 16):
@@ -19,4 +23,4 @@ for i in range(1, 16):
     with open(txt_file_path, "w", encoding="utf-8") as txt_file:
         txt_file.write(f"-- Output of query {q_number}\n")
 
-print("All files generated successfully in the 'SQL' folder.")
+print(f"All files generated successfully in: {sql_output_folder}")

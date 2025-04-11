@@ -1,0 +1,42 @@
+DB Data Insertion Plan:
+
+# Core entities with images/descriptions
+- 20 festivals (4 of which are future) [with image & caption]
+- 40 locations [with image & caption]
+- 80 stages [with image & caption]
+- 100 bands and 100 solo artists (total: 200 performers) [with image & caption]
+- 300 performances (linked to artists/bands, scheduled across stages)
+- 150 equipment items [with image & caption]
+- 300 staff members [with image & caption]
+- 500 attendees [with contact info]
+- 1000 tickets (distributed across festivals and performances)
+
+# Relationships & metadata
+- ~200 events (10 per festival) [each linked to 1 stage and multiple performances]
+- Each stage with 3–6 equipment items (300+ stage_equipment rows)
+- Each performance links to 1 artist or band
+- Each event linked to one festival
+- Each ticket linked to one attendee and one event
+
+# Resale system
+- ~150 resale_offer entries (tickets available for resale)
+- ~200 resale_interest entries (attendees expressing interest)
+
+# Reviews
+- ~400 reviews (performance ratings by attendees with active tickets)
+
+# Social media & multimedia
+- Every artist and band has at least one social media account
+- Each entity with 'material' has image and caption fields filled (use local paths or URLs)
+
+# Assumptions
+- Each band has 3–6 members, members are also Artists
+- Each attendee has 1–4 tickets, without violating constraints
+- Each festival spans 1–3 days with 5–15 events per day
+- Performances have durations 30–180 minutes with required breaks between
+- Equipment is shared across stages but not duplicated unnecessarily
+- Staff covers technical, security, and support roles; security staff = at least 5% of audience size, support = 2%
+- VIP tickets limited to 10% of each stage capacity
+
+# Notes
+- This scale allows proper testing of joins, aggregations, groupings, subqueries, and performance
