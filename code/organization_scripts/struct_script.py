@@ -2,22 +2,20 @@ import os
 import subprocess
 
 # IMPORTANT
-# RUN ONLY WHERE 'TREE' COMMAND IS AVAILABLE
+# RUN ONLY WHERE 'tree' COMMAND IS AVAILABLE
 
-
-# Paths
+# Go two levels up to reach project root
 script_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.abspath(os.path.join(script_dir, ".."))
+project_root = os.path.abspath(os.path.join(script_dir, "..", ".."))
+
+# Target the docs folder inside project root
 docs_folder = os.path.join(project_root, "docs")
 output_file = os.path.join(docs_folder, "project_structure.txt")
 
-# Make sure docs folder exists
+# Ensure docs folder exists
 os.makedirs(docs_folder, exist_ok=True)
 
-# Run the 'tree' command with:
-# -L 3: show 3 levels deep (adjust if needed)
-# -a: include hidden files/folders
-# -I: exclude pattern (e.g. '.git|__pycache__|venv|.mypy_cache')
+# Run the 'tree' command
 try:
     result = subprocess.run(
         ["tree", "-a", "-L", "3", "-I", ".git|__pycache__|venv|.mypy_cache|.idea|.vscode"],
