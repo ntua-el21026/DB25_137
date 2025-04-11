@@ -3,6 +3,35 @@ DROP DATABASE IF EXISTS pulse_university;
 CREATE DATABASE pulse_university;
 USE pulse_university;
 
+-- Drop all tables
+DROP TABLE IF EXISTS Continent;
+DROP TABLE IF EXISTS Staff_Role;
+DROP TABLE IF EXISTS Experience_Level;
+DROP TABLE IF EXISTS Performance_Type;
+DROP TABLE IF EXISTS Ticket_Type;
+DROP TABLE IF EXISTS Payment_Method;
+DROP TABLE IF EXISTS Ticket_Status;
+DROP TABLE IF EXISTS Location;
+DROP TABLE IF EXISTS Festival;
+DROP TABLE IF EXISTS Stage;
+DROP TABLE IF EXISTS Equipment;
+DROP TABLE IF EXISTS Stage_Equipment;
+DROP TABLE IF EXISTS Event;
+DROP TABLE IF EXISTS Staff;
+DROP TABLE IF EXISTS Works_On;
+DROP TABLE IF EXISTS Performance;
+DROP TABLE IF EXISTS Artist;
+DROP TABLE IF EXISTS Band;
+DROP TABLE IF EXISTS Band_Member;
+DROP TABLE IF EXISTS Performance_Band;
+DROP TABLE IF EXISTS Performance_Artist;
+DROP TABLE IF EXISTS Attendee;
+DROP TABLE IF EXISTS Ticket;
+DROP TABLE IF EXISTS Review;
+DROP TABLE IF EXISTS Resale_Offer;
+DROP TABLE IF EXISTS Resale_Interest_Request;
+DROP TABLE IF EXISTS Resale_Interest_Type;
+
 -- Lookup Tables
 CREATE TABLE Continent (
     continent_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -154,7 +183,7 @@ CREATE TABLE Staff (
     staff_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
-    age INT NOT NULL CHECK (age > 0),
+    date_of_birth DATE,
     role_id INT UNSIGNED NOT NULL,
     experience_id INT UNSIGNED NOT NULL,
     image VARCHAR(100) NOT NULL CHECK (image LIKE 'https://%'),
@@ -239,7 +268,7 @@ CREATE TABLE Attendee (
     attendee_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     first_name VARCHAR(100),
     last_name VARCHAR(100),
-    age INT NOT NULL CHECK(age > 0),
+    date_of_birth DATE,
     phone_number VARCHAR(20),
     email VARCHAR(255)
 );
