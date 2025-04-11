@@ -15,7 +15,7 @@ ticket-atendee (belongs_to): total on ticket, many to one
 resale_offer-event (queue_for_event): total on queue, many to one
 resale_offer-atendee (offered_by): total on resale_offer, many to one, with ticket_id
 resale_interest-atendee (exrpessed_by): total on resale_interest, many to one
-resale_interest-event (interest_for_event): many to one
+resale_interest-event (interest_for_event): many to one, with type(s)
 resale_offer-resale_interest (interest_for_offer): many to one
 review-atendee (written_by): total on review, many to one
 review-performance (rates): total on review, many to one
