@@ -1,7 +1,7 @@
 -- Drop and recreate the database
-DROP DATABASE IF EXISTS pulse_festival;
-CREATE DATABASE pulse_festival;
-USE pulse_festival;
+DROP DATABASE IF EXISTS pulse_university;
+CREATE DATABASE pulse_university;
+USE pulse_university;
 
 -- Lookup Tables
 CREATE TABLE Staff_Role (
@@ -56,15 +56,6 @@ INSERT INTO Payment_Method (name) VALUES
 ('credit card'),
 ('debit card'),
 ('bank transfer');
-
-CREATE TABLE Queue_Action (
-    action_type_id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(50) NOT NULL UNIQUE
-);
-
-INSERT INTO Queue_Action (name) VALUES
-('buy'),
-('sell');
 
 -- Main Tables
 CREATE TABLE Location (
@@ -156,9 +147,11 @@ CREATE TABLE Performance (
     break_duration INT CHECK (break_duration BETWEEN 5 AND 30),
     stage_id INT NOT NULL,
     event_id INT NOT NULL,
+    sequence_number INT NOT NULL CHECK (sequence_number > 0),
     FOREIGN KEY(type_id) REFERENCES Performance_Type(type_id),
     FOREIGN KEY(stage_id) REFERENCES Stage(stage_id),
-    FOREIGN KEY(event_id) REFERENCES Event(event_id)
+    FOREIGN KEY(event_id) REFERENCES Event(event_id),
+    UNIQUE(event_id, sequence_number)
 );
 
 CREATE TABLE Artist (
@@ -251,29 +244,32 @@ CREATE TABLE Review (
     FOREIGN KEY(artist_id) REFERENCES Artist(artist_id)
 );
 
--- Revised Resale Queue
--- A ticket must appear at most once in the resale queue at any time.
-CREATE TABLE Resale_Queue (
-    queue_id INT AUTO_INCREMENT PRIMARY KEY,
-    action_type_id INT NOT NULL,
+CREATE TABLE Resale_Offer (
+    offer_id INT AUTO_INCREMENT PRIMARY KEY,
     ticket_id INT NOT NULL,
     event_id INT NOT NULL,
     seller_id INT NOT NULL,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(action_type_id) REFERENCES Queue_Action(action_type_id),
     FOREIGN KEY(ticket_id) REFERENCES Ticket(ticket_id),
     FOREIGN KEY(event_id) REFERENCES Event(event_id),
     FOREIGN KEY(seller_id) REFERENCES Attendee(attendee_id),
     UNIQUE(ticket_id)
 );
 
--- Model many buyers interested in a resale item.
--- An attendee (buyer) can appear on multiple queues (for different events).
-CREATE TABLE Resale_Queue_Interest (
-    queue_id INT NOT NULL,
+CREATE TABLE Resale_Interest (
+    interest_id INT AUTO_INCREMENT PRIMARY KEY,
     buyer_id INT NOT NULL,
+    offer_id INT,
+    event_id INT,
+    type_id INT,
     expressed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY(queue_id, buyer_id),
-    FOREIGN KEY(queue_id) REFERENCES Resale_Queue(queue_id),
-    FOREIGN KEY(buyer_id) REFERENCES Attendee(attendee_id)
+    FOREIGN KEY(buyer_id) REFERENCES Attendee(attendee_id),
+    FOREIGN KEY(offer_id) REFERENCES Resale_Offer(offer_id),
+    FOREIGN KEY(event_id) REFERENCES Event(event_id),
+    FOREIGN KEY(type_id) REFERENCES Ticket_Type(type_id),
+    CHECK (
+        (offer_id IS NOT NULL AND event_id IS NULL AND type_id IS NULL) OR
+        (offer_id IS NULL AND event_id IS NOT NULL AND type_id IS NOT NULL)
+    )
 );
+
