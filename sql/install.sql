@@ -272,4 +272,3 @@ CREATE TABLE Resale_Interest (
         (offer_id IS NULL AND event_id IS NOT NULL AND type_id IS NOT NULL)
     )
 );
-
