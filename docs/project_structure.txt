@@ -3,14 +3,17 @@
 ├── README.md
 ├── code
 │   ├── README.md
-│   ├── qx_script.py
-│   └── struct_script.py
+│   └── organization_scripts
+│       ├── db_data.py
+│       ├── qx_script.py
+│       └── struct_script.py
 ├── diagrams
 │   ├── README.md
 │   └── er.pdf
 ├── docs
 │   ├── README.md
 │   ├── cardinality_constraints.txt
+│   ├── db_data.txt
 │   └── project_structure.txt
 └── sql
     ├── Q1.sql
@@ -47,4 +50,4 @@
     ├── install.sql
     └── load.sql
 
-4 directories, 43 files
+5 directories, 45 files
