@@ -1,0 +1,31 @@
+{
+    "sqltools.connections": [
+        {
+            "mysqlOptions": {
+                "authProtocol": "default",
+                "enableSsl": "Disabled"
+            },
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 3306,
+            "driver": "MariaDB",
+            "database": "pulse_university",
+            "username": "root",
+            "name": "MyLocalMariaDB"
+        },
+        {
+            "mysqlOptions": {
+                "authProtocol": "default",
+                "enableSsl": "Disabled"
+            },
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 3306,
+            "driver": "MariaDB",
+            "name": "MyLocalMariaDB",
+            "username": "root",
+            "database": "mysql"
+        }
+    ],
+    "C_Cpp.default.compilerPath": "C:/MinGW/bin/gcc.exe"
+}
