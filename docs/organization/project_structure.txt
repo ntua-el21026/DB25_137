@@ -1,14 +1,16 @@
 .
+├── .gitignore
 ├── LICENSE
 ├── README.md
 ├── code
 │   ├── README.md
 │   ├── data_generation
+│   │   └── loading.py
 │   ├── organization
 │   │   ├── dbdata.py
 │   │   └── structure.py
 │   ├── run_all_scripts.py
-│   └── sql_help
+│   └── sql_utils
 │       ├── drop_tables.py
 │       └── queries.py
 ├── diagrams
@@ -23,6 +25,7 @@
 └── sql
     ├── install.sql
     ├── load.sql
+    ├── pulse_university_data.sql
     └── queries
         ├── Q1.sql
         ├── Q10.sql
@@ -55,4 +58,4 @@
         ├── Q9.sql
         └── Q9_out.txt
 
-9 directories, 46 files
+9 directories, 49 files
