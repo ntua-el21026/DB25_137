@@ -410,9 +410,16 @@ def generate_resale_interest_types(f):
     f.write("\n")
 
 def main():
-    with open("pulse_university_data.sql", "w") as f:
+    import os
+
+    # Define path to save the file in the sql/ folder
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.abspath(os.path.join(script_dir, "..", ".."))
+    sql_output_path = os.path.join(project_root, "sql", "pulse_university_data.sql")
+
+    with open(sql_output_path, "w", encoding="utf-8") as f:
         write_sql_header(f)
-        
+
         # Generate data for each table
         generate_locations(f)
         generate_festivals(f)
@@ -434,8 +441,10 @@ def main():
         generate_resale_interest_requests(f)
         generate_resale_interest_types(f)
         generate_resale_offers(f)
-        
+
         write_sql_footer(f)
+
+    print(f"✅ SQL data file written to: {sql_output_path}")
 
 if __name__ == "__main__":
     main()
