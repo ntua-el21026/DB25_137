@@ -1,0 +1,69 @@
+.
+├── .gitignore
+├── LICENSE
+├── README.md
+├── cli
+├── code
+│   ├── README.md
+│   ├── code_utils
+│   │   ├── dropgen.py
+│   │   ├── fixeof.py
+│   │   └── qgen.py
+│   ├── data_generation
+│   │   └── faker.py
+│   ├── organization
+│   │   ├── intcheck.py
+│   │   └── struct.py
+│   └── runall.py
+├── diagrams
+│   ├── README.md
+│   ├── er.pdf
+│   └── relational.pdf
+├── docs
+│   ├── README.md
+│   └── organization
+│       ├── cardinality_constraints.txt
+│       ├── datalist.txt
+│       ├── integrity_report.txt
+│       └── project_structure.txt
+├── sql
+│   ├── indexing.sql
+│   ├── install.sql
+│   ├── load.sql
+│   ├── procedures.sql
+│   ├── queries
+│   │   ├── Q1.sql
+│   │   ├── Q10.sql
+│   │   ├── Q10_out.txt
+│   │   ├── Q11.sql
+│   │   ├── Q11_out.txt
+│   │   ├── Q12.sql
+│   │   ├── Q12_out.txt
+│   │   ├── Q13.sql
+│   │   ├── Q13_out.txt
+│   │   ├── Q14.sql
+│   │   ├── Q14_out.txt
+│   │   ├── Q15.sql
+│   │   ├── Q15_out.txt
+│   │   ├── Q1_out.txt
+│   │   ├── Q2.sql
+│   │   ├── Q2_out.txt
+│   │   ├── Q3.sql
+│   │   ├── Q3_out.txt
+│   │   ├── Q4.sql
+│   │   ├── Q4_out.txt
+│   │   ├── Q5.sql
+│   │   ├── Q5_out.txt
+│   │   ├── Q6.sql
+│   │   ├── Q6_out.txt
+│   │   ├── Q7.sql
+│   │   ├── Q7_out.txt
+│   │   ├── Q8.sql
+│   │   ├── Q8_out.txt
+│   │   ├── Q9.sql
+│   │   └── Q9_out.txt
+│   ├── triggers.sql
+│   └── views.sql
+└── test
+
+11 directories, 55 files

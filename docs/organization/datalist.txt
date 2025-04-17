@@ -1,0 +1,20 @@
+Data Generation Summary
+
+=======================
+
+This file documents the configuration of the synthetic data generated for populating the Pulse University Festival database.
+
+
+Parameters:
+-----------
+NUM_ARTISTS = 60
+NUM_BANDS = 25
+NUM_STAGES = 35
+NUM_LOCATIONS = 6
+NUM_FESTIVALS = 12
+NUM_EVENTS_PER_FESTIVAL = 1
+NUM_PERFORMANCES_PER_EVENT = 12
+NUM_ATTENDEES = 180
+NUM_TICKETS = 240
+NUM_STAFF = 100
+NUM_REVIEWS = 40
