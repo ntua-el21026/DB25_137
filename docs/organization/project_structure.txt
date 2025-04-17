@@ -11,8 +11,6 @@
 │   │   └── qgen.py
 │   ├── data_generation
 │   │   └── faker.py
-│   ├── docs
-│   │   └── organization
 │   ├── organization
 │   │   ├── intcheck.py
 │   │   └── struct.py
@@ -25,6 +23,7 @@
 │   ├── README.md
 │   └── organization
 │       ├── cardinality_constraints.txt
+│       ├── datalist.txt
 │       ├── integrity_report.txt
 │       └── project_structure.txt
 ├── sql
@@ -67,4 +66,4 @@
 │   └── views.sql
 └── test
 
-13 directories, 54 files
+11 directories, 55 files
