@@ -17,7 +17,7 @@ INTEGRITY REPORT
 [OK] No issues found.
 
 [Checking data_generation/faker.py]
-[WARNING] No file found matching: docs/organization/datalist.txt
+[OK] No issues found.
 
 [Checking organization/intcheck.py]
 [OK] No issues found.
