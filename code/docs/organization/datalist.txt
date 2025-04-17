@@ -1,0 +1,24 @@
+Data Generation Summary
+
+=======================
+
+This file documents the configuration of the synthetic data generated for populating the Pulse University Festival database.
+
+Each entry below indicates how many records will be generated per entity category.
+
+You can modify these values in 'faker.py' to adjust the size of the dataset.
+
+
+
+Parameters:
+
+-----------
+NUM_ARTISTS = 60         # Number of solo artists to be inserted.
+NUM_BANDS = 25           # Number of bands (groups of artists).
+NUM_STAGES = 35          # Number of performance stages at the festivals.
+NUM_LOCATIONS = 6       # Number of unique festival locations.
+NUM_FESTIVALS = 12       # Number of annual festivals (includes future ones).
+NUM_EVENTS_PER_FESTIVAL = 1  # Number of events per festival (usually 1).
+NUM_PERFORMANCES_PER_EVENT = 12  # Number of performances per event.
+NUM_ATTENDEES = 180       # Total number of unique attendees.
+NUM_TICKETS = 240         # Total number of tickets sold or offered.

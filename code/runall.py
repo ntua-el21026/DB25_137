@@ -14,20 +14,20 @@ def run_scripts_in_folder(folder_path):
                 print(f"✅ Script {filename} completed.\n")
 
 def main():
-    # Get the absolute path to the current 'code' folder
     code_dir = os.path.abspath(os.path.dirname(__file__))
 
-    # Paths to the subfolders you want to run scripts from
-    sql_utils_path = os.path.join(code_dir, "sql_utils")
-    org_path = os.path.join(code_dir, "organization")
-    data_gen_path = os.path.join(code_dir, "data_generation")
+    # Explicit run order by folder
+    custom_order = ["data_generation", "code_utils"]
+    org_folder = os.path.join(code_dir, "organization")
 
-    # Run all scripts in each folder
-    for path in [sql_utils_path, org_path, data_gen_path]:
-        if os.path.isdir(path):
-            run_scripts_in_folder(path)
-        else:
-            print(f"⚠️ Folder does not exist: {path}")
+    for folder_name in custom_order:
+        folder_path = os.path.join(code_dir, folder_name)
+        if os.path.isdir(folder_path):
+            run_scripts_in_folder(folder_path)
+
+    # Organization scripts last
+    if os.path.isdir(org_folder):
+        run_scripts_in_folder(org_folder)
 
 if __name__ == "__main__":
     main()

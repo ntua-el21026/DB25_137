@@ -1,0 +1,26 @@
+INTEGRITY REPORT
+================
+
+[INFO] struct.py output parsed successfully.
+
+
+[Checking runall.py]
+[OK] No issues found.
+
+[Checking code_utils/dropgen.py]
+[OK] No issues found.
+
+[Checking code_utils/fixeof.py]
+[OK] No issues found.
+
+[Checking code_utils/qgen.py]
+[OK] No issues found.
+
+[Checking data_generation/faker.py]
+[WARNING] No file found matching: docs/organization/datalist.txt
+
+[Checking organization/intcheck.py]
+[OK] No issues found.
+
+[Checking organization/struct.py]
+[OK] No issues found.

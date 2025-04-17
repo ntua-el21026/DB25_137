@@ -11,6 +11,8 @@ DROP TABLE IF EXISTS Performance_Type;
 DROP TABLE IF EXISTS Ticket_Type;
 DROP TABLE IF EXISTS Payment_Method;
 DROP TABLE IF EXISTS Ticket_Status;
+DROP TABLE IF EXISTS Genre;
+DROP TABLE IF EXISTS SubGenre;
 DROP TABLE IF EXISTS Location;
 DROP TABLE IF EXISTS Festival;
 DROP TABLE IF EXISTS Stage;
@@ -21,7 +23,11 @@ DROP TABLE IF EXISTS Staff;
 DROP TABLE IF EXISTS Works_On;
 DROP TABLE IF EXISTS Performance;
 DROP TABLE IF EXISTS Artist;
+DROP TABLE IF EXISTS Artist_Genre;
+DROP TABLE IF EXISTS Artist_SubGenre;
 DROP TABLE IF EXISTS Band;
+DROP TABLE IF EXISTS Band_Genre;
+DROP TABLE IF EXISTS Band_SubGenre;
 DROP TABLE IF EXISTS Band_Member;
 DROP TABLE IF EXISTS Performance_Band;
 DROP TABLE IF EXISTS Performance_Artist;
@@ -123,6 +129,71 @@ INSERT INTO Ticket_Status (name) VALUES
 ('active'),
 ('used'),
 ('on offer');
+
+CREATE TABLE Genre (
+    genre_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE
+);
+
+INSERT INTO Genre (name) VALUES
+('Rock'),
+('Pop'),
+('Jazz'),
+('Hip Hop'),
+('Electronic'),
+('Classical'),
+('Reggae'),
+('Latin'),
+('Metal'),
+('Funk');
+
+CREATE TABLE SubGenre (
+    sub_genre_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    genre_id INT UNSIGNED NOT NULL,
+    FOREIGN KEY (genre_id) REFERENCES Genre(genre_id) ON DELETE CASCADE
+);
+
+INSERT INTO SubGenre (name, genre_id) VALUES
+('Hard Rock',         (SELECT genre_id FROM Genre WHERE name = 'Rock')),
+('Progressive Rock',  (SELECT genre_id FROM Genre WHERE name = 'Rock')),
+('Punk Rock',         (SELECT genre_id FROM Genre WHERE name = 'Rock')),
+
+('Synthpop',          (SELECT genre_id FROM Genre WHERE name = 'Pop')),
+('Electropop',        (SELECT genre_id FROM Genre WHERE name = 'Pop')),
+('Dance Pop',         (SELECT genre_id FROM Genre WHERE name = 'Pop')),
+
+('Bebop',             (SELECT genre_id FROM Genre WHERE name = 'Jazz')),
+('Smooth Jazz',       (SELECT genre_id FROM Genre WHERE name = 'Jazz')),
+('Free Jazz',         (SELECT genre_id FROM Genre WHERE name = 'Jazz')),
+
+('Trap',              (SELECT genre_id FROM Genre WHERE name = 'Hip Hop')),
+('Boom Bap',          (SELECT genre_id FROM Genre WHERE name = 'Hip Hop')),
+('Lo-fi Hip Hop',     (SELECT genre_id FROM Genre WHERE name = 'Hip Hop')),
+
+('Techno',            (SELECT genre_id FROM Genre WHERE name = 'Electronic')),
+('House',             (SELECT genre_id FROM Genre WHERE name = 'Electronic')),
+('Trance',            (SELECT genre_id FROM Genre WHERE name = 'Electronic')),
+
+('Baroque',           (SELECT genre_id FROM Genre WHERE name = 'Classical')),
+('Romantic',          (SELECT genre_id FROM Genre WHERE name = 'Classical')),
+('Contemporary Classical', (SELECT genre_id FROM Genre WHERE name = 'Classical')),
+
+('Dub',               (SELECT genre_id FROM Genre WHERE name = 'Reggae')),
+('Dancehall',         (SELECT genre_id FROM Genre WHERE name = 'Reggae')),
+('Roots Reggae',      (SELECT genre_id FROM Genre WHERE name = 'Reggae')),
+
+('Salsa',             (SELECT genre_id FROM Genre WHERE name = 'Latin')),
+('Reggaeton',         (SELECT genre_id FROM Genre WHERE name = 'Latin')),
+('Bachata',           (SELECT genre_id FROM Genre WHERE name = 'Latin')),
+
+('Death Metal',       (SELECT genre_id FROM Genre WHERE name = 'Metal')),
+('Black Metal',       (SELECT genre_id FROM Genre WHERE name = 'Metal')),
+('Thrash Metal',      (SELECT genre_id FROM Genre WHERE name = 'Metal')),
+
+('Afrofunk',          (SELECT genre_id FROM Genre WHERE name = 'Funk')),
+('P-Funk',            (SELECT genre_id FROM Genre WHERE name = 'Funk')),
+('Jazz-Funk',         (SELECT genre_id FROM Genre WHERE name = 'Funk'));
 
 -- Main Tables
 CREATE TABLE Location (
@@ -237,8 +308,6 @@ CREATE TABLE Artist (
     last_name VARCHAR(100) NOT NULL,
     nickname VARCHAR(100),
     date_of_birth DATE NOT NULL,
-    main_genre VARCHAR(100) NOT NULL,
-    sub_genre VARCHAR(100) NOT NULL,
     webpage varchar(100) CHECK (webpage LIKE 'https://%'),
     instagram varchar(100) CHECK (instagram LIKE '@%'),
     image VARCHAR(100) NOT NULL CHECK (image LIKE 'https://%'),
@@ -246,17 +315,47 @@ CREATE TABLE Artist (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+CREATE TABLE Artist_Genre (
+    artist_id INT UNSIGNED,
+    genre_id INT UNSIGNED,
+    PRIMARY KEY (artist_id, genre_id),
+    FOREIGN KEY (artist_id) REFERENCES Artist(artist_id) ON DELETE CASCADE,
+    FOREIGN KEY (genre_id) REFERENCES Genre(genre_id) ON DELETE CASCADE
+);
+
+CREATE TABLE Artist_SubGenre (
+    artist_id INT UNSIGNED,
+    sub_genre_id INT UNSIGNED,
+    PRIMARY KEY (artist_id, sub_genre_id),
+    FOREIGN KEY (artist_id) REFERENCES Artist(artist_id) ON DELETE CASCADE,
+    FOREIGN KEY (sub_genre_id) REFERENCES SubGenre(sub_genre_id) ON DELETE CASCADE
+);
+
 CREATE TABLE Band (
     band_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     formation_date DATE,
-    main_genre VARCHAR(100) NOT NULL,
-    sub_genre VARCHAR(100) NOT NULL,
     webpage VARCHAR(100) CHECK (webpage LIKE 'https://%'),
     instagram VARCHAR(100) CHECK (instagram LIKE '@%'),
     image VARCHAR(100) NOT NULL CHECK (image LIKE 'https://%'),
     caption VARCHAR(100) NOT NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE Band_Genre (
+    band_id INT UNSIGNED,
+    genre_id INT UNSIGNED,
+    PRIMARY KEY (band_id, genre_id),
+    FOREIGN KEY (band_id) REFERENCES Band(band_id) ON DELETE CASCADE,
+    FOREIGN KEY (genre_id) REFERENCES Genre(genre_id) ON DELETE CASCADE
+);
+
+CREATE TABLE Band_SubGenre (
+    band_id INT UNSIGNED,
+    sub_genre_id INT UNSIGNED,
+    PRIMARY KEY (band_id, sub_genre_id),
+    FOREIGN KEY (band_id) REFERENCES Band(band_id) ON DELETE CASCADE,
+    FOREIGN KEY (sub_genre_id) REFERENCES SubGenre(sub_genre_id) ON DELETE CASCADE
 );
 
 CREATE TABLE Band_Member (
