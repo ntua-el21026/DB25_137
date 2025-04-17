@@ -68,10 +68,17 @@ def write_datalist_txt():
         ""
     ]
 
-    root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    datalist_path = os.path.join(root_dir, "docs", "organization", "datalist.txt")
+    # Go three levels up: data_generation → code → project root
+    root_dir = os.path.abspath(os.path.join(
+        os.path.dirname(__file__),
+        "..",  # data_generation
+        "..",  # code
+        ".."   # project root
+    ))
 
+    datalist_path = os.path.join(root_dir, "docs", "organization", "datalist.txt")
     os.makedirs(os.path.dirname(datalist_path), exist_ok=True)
+
     with open(datalist_path, 'w', encoding='utf-8') as f:
         f.write('\n'.join(datalist_lines))
 
