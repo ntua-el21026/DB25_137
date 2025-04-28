@@ -8,78 +8,63 @@ USE pulse_university;
 DELIMITER //
 CREATE PROCEDURE UpdateExpiredTickets()
 BEGIN
+	DECLARE activeStatus INT;
+	DECLARE onOfferStatus INT;
+	DECLARE unusedStatus INT;
+
+	-- Fetch all necessary status IDs
+	SELECT status_id INTO activeStatus
+	FROM Ticket_Status
+	WHERE name = 'active'
+	LIMIT 1;
+
+	SELECT status_id INTO onOfferStatus
+	FROM Ticket_Status
+	WHERE name = 'on offer'
+	LIMIT 1;
+
+	SELECT status_id INTO unusedStatus
+	FROM Ticket_Status
+	WHERE name = 'unused'
+	LIMIT 1;
+
+	-- Update tickets
 	UPDATE Ticket t
 		JOIN Event e ON t.event_id = e.event_id
 		JOIN Festival f ON e.fest_year = f.fest_year
-	SET t.status_id = (
-			SELECT status_id
-			FROM Ticket_Status
-			WHERE name = 'on offer'
-			LIMIT 1
-		)
+	SET t.status_id = unusedStatus
 	WHERE CURDATE() > f.end_date
-		AND t.status_id <> (
-			SELECT status_id
-			FROM Ticket_Status
-			WHERE name = 'used'
-			LIMIT 1
-		);
+		AND (t.status_id = activeStatus OR t.status_id = onOfferStatus);
 END;
 //
 DELIMITER ;
 
--- Procedure 2: Get the top 5 attendees by total review score for a given artist
+-- Procedure 2: Expire resale offers after the related event has ended
 DELIMITER //
-CREATE PROCEDURE GetTopAttendeesForArtist(
-	IN inArtistID INT
-)
+CREATE PROCEDURE ExpireResaleOffers()
 BEGIN
-	SELECT 
-		att.attendee_id,
-		CONCAT(att.first_name, ' ', att.last_name) AS attendee_name,
-		SUM(r.overall) AS total_review_score
-	FROM Review r
-		JOIN Attendee att ON r.attendee_id = att.attendee_id
-		JOIN Performance_Artist pa ON r.perf_id = pa.perf_id
-	WHERE pa.artist_id = inArtistID
-	GROUP BY 
-		att.attendee_id, attendee_name
-	ORDER BY total_review_score DESC
-	LIMIT 5;
+	DELETE FROM Resale_Offer
+	WHERE event_id IN (
+		SELECT e.event_id
+		FROM Event e
+			JOIN Festival f ON e.fest_year = f.fest_year
+		WHERE CURDATE() > f.end_date
+	);
 END;
 //
 DELIMITER ;
 
--- Procedure 3: Insert a new performance record
+-- Procedure 3: Expire resale interests after the related event has ended
 DELIMITER //
-CREATE PROCEDURE AddPerformance(
-	IN p_type_id INT,
-	IN p_datetime DATETIME,
-	IN p_duration TINYINT,
-	IN p_break_duration TINYINT,
-	IN p_stage_id INT,
-	IN p_event_id INT,
-	IN p_sequence_number TINYINT
-)
+CREATE PROCEDURE ExpireResaleInterests()
 BEGIN
-	INSERT INTO Performance (
-			type_id, 
-			datetime, 
-			duration, 
-			break_duration, 
-			stage_id, 
-			event_id, 
-			sequence_number
-		)
-	VALUES (
-			p_type_id, 
-			p_datetime, 
-			p_duration, 
-			p_break_duration, 
-			p_stage_id, 
-			p_event_id, 
-			p_sequence_number
-		);
+	DELETE FROM Resale_Interest
+	WHERE event_id IN (
+		SELECT e.event_id
+		FROM Event e
+			JOIN Festival f ON e.fest_year = f.fest_year
+		WHERE CURDATE() > f.end_date
+	);
 END;
 //
 DELIMITER ;

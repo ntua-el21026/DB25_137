@@ -128,7 +128,8 @@ CREATE TABLE Ticket_Status (
 INSERT INTO Ticket_Status (name) VALUES
 ('active'),
 ('used'),
-('on offer');
+('on offer'),
+('unused');
 
 CREATE TABLE Genre (
     genre_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
