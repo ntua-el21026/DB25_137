@@ -1,11 +1,15 @@
 .
+├── .envrc
 ├── .gitignore
 ├── LICENSE
 ├── README.md
 ├── cli
+│   ├── README.md
+│   ├── __init__.py
 │   ├── db137.py
 │   └── users
-│       └── managers.py
+│       ├── __init__.py
+│       └── manager.py
 ├── code
 │   ├── README.md
 │   ├── code_utils
@@ -15,9 +19,15 @@
 │   ├── data_generation
 │   │   └── faker.py
 │   ├── organization
-│   │   ├── intcheck.py
 │   │   └── struct.py
 │   └── runall.py
+├── db137.egg-info
+│   ├── PKG-INFO
+│   ├── SOURCES.txt
+│   ├── dependency_links.txt
+│   ├── entry_points.txt
+│   ├── requires.txt
+│   └── top_level.txt
 ├── diagrams
 │   ├── README.md
 │   ├── er.pdf
@@ -27,8 +37,8 @@
 │   └── organization
 │       ├── cardinality_constraints.txt
 │       ├── datalist.txt
-│       ├── integrity_report.txt
 │       └── project_structure.txt
+├── pyproject.toml
 ├── sql
 │   ├── indexing.sql
 │   ├── install.sql
@@ -69,4 +79,4 @@
 │   └── views.sql
 └── test
 
-12 directories, 57 files
+13 directories, 66 files

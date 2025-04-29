@@ -20,7 +20,7 @@ def main():
     try:
         use_index = next(i for i, line in enumerate(lines) if "USE pulse_university;" in line)
     except StopIteration:
-        print("❌ Could not find 'USE pulse_university;' in install.sql.")
+        print("Could not find 'USE pulse_university;' in install.sql.")
         return
 
     # Remove all blank lines after USE
@@ -69,7 +69,7 @@ def main():
     with open(install_path, "w", encoding="utf-8") as f:
         f.writelines(lines)
 
-    print(f"✅ Drop block with {len(table_names)} tables inserted cleanly after 'USE pulse_university;', with 1 blank line before and after.")
+    print(f"Drop block with {len(table_names)} tables inserted cleanly after 'USE pulse_university;', with 1 blank line before and after.")
 
 if __name__ == "__main__":
     main()
