@@ -9,6 +9,7 @@ import os
 NUM_ARTISTS = 60
 NUM_BANDS = 25
 NUM_STAGES = 35
+NUM_EQUIPMENTS = 85
 NUM_LOCATIONS = 6
 NUM_FESTIVALS = 12
 NUM_EVENTS_PER_FESTIVAL = 1
@@ -106,9 +107,10 @@ def main():
         fest_year = today.year - NUM_FESTIVALS + i
         start_date = today + datetime.timedelta(days=30 * i) if i <= 2 else today - datetime.timedelta(days=365 * (NUM_FESTIVALS - i + 1))
         end_date = start_date + datetime.timedelta(days=random.randint(1, 3))
+        location_id = random.choice(locations)
         sql.append(
             f"INSERT INTO Festival (fest_year, name, start_date, end_date, image, caption, loc_id) VALUES "
-            f"({fest_year}, 'Festival_{i}', '{start_date}', '{end_date}', '{get_dummy_url()}', '{get_dummy_caption()}', {random.choice(locations)});"
+            f"({fest_year}, 'Festival_{i}', '{start_date}', '{end_date}', '{get_dummy_url()}', '{get_dummy_caption()}', {location_id});"
         )
         festivals.append(fest_year)
 
@@ -121,6 +123,25 @@ def main():
         )
         stages.append(i)
 
+    # Equipments
+    equipments = []
+    for i in range(1, NUM_EQUIPMENTS + 1):
+        sql.append(
+            f"INSERT INTO Equipment (name, image, caption) VALUES "
+            f"('Equipment_{i}', {get_dummy_url}, {get_dummy_caption});"
+        )
+        equipments.append(i)
+
+    # Stage - Equipment (Stage and Equipment relationship)
+    for stage_id in stages:
+        num_equipment = random.randint(1, 5) # Random number of equipment per stage (1 to 5)
+        selected_equipment = random.sample(equipments, k=num_equipment)
+        for equip in selected_equipment:
+            sql.append(
+                f"INSERT INTO Stage_Equipment (stage_id, equipment_id) VALUES "
+                f"({stage_id}, {equip});"
+            )
+
     # 4. Events
     events = []
     for i, fest_year in enumerate(festivals, start=1):
@@ -130,6 +151,28 @@ def main():
             f"('Event_{fest_year}', {random.choice(['TRUE', 'FALSE'])}, '{get_dummy_url()}', '{get_dummy_caption()}', {fest_year}, {stage_id});"
         )
         events.append((i, stage_id))
+
+    # Staff
+    staff = []
+    for i in range(1, NUM_STAFF + 1):
+        dob = datetime.date(1975 + random.randint(0, 30), random.randint(1, 12), random.randint(1, 28))
+        role_id = random.randint(1, len(STAFF_ROLES))
+        exp_id = random.randint(1, 5)
+        
+        sql.append(
+            f"INSERT INTO Staff (first_name, last_name, date_of_birth, role_id, experience_id, image, caption) VALUES "
+            f"('StaffFirst_{i}', 'StaffLast_{i}', '{dob}', {role_id}, {exp_id}, '{get_dummy_url()}', '{get_dummy_caption()}');"
+        )
+        staff.append(i)
+
+    # Works_On (Staff and Events relationship)
+    for staff_id in staff:
+        num_events = random.randint(1, 3)  # Random number of events this staff member will work on (1 to 3)
+        selected_events = random.sample(events, k=num_events)  # Randomly select events for the staff member
+        for event in selected_events:
+            sql.append(
+                f"INSERT INTO Works_On (staff_id, event_id) VALUES ({staff_id}, {event[0]});"
+            )
 
     # 5. Performances
     perf_id = 1
@@ -195,7 +238,7 @@ def main():
     attendees = []
     for i in range(1, NUM_ATTENDEES + 1):
         dob = datetime.date(1980 + random.randint(0, 20), random.randint(1, 12), random.randint(1, 28))
-        phone = f"+30{random.randint(1000000000,9999999999)}"
+        phone = f"+3069{random.randint(10000000,99999999)}"
         email = f"attendee{i}@example.com"
         sql.append(
             f"INSERT INTO Attendee (first_name, last_name, date_of_birth, phone_number, email) VALUES "
@@ -205,6 +248,21 @@ def main():
 
     # 10. Tickets
     ticket_combos = set()
+    ticket_codes = []
+
+    # Function to calculate the check digit for EAN-13
+    def calculate_check_digit(ean):
+        sum_odd = sum(int(ean[i]) for i in range(0, 12, 2))  # Sum of digits in odd positions
+        sum_even = sum(int(ean[i]) for i in range(1, 12, 2))  # Sum of digits in even positions
+        total = sum_odd + 3 * sum_even
+        remainder = total % 10
+        check_digit = (10 - remainder) % 10
+        return check_digit
+    
+    # Constant digits in ours EANs
+    country_code = '520' # Greek country code (3 digits)
+    company_prefix = f"2425137"  # Company prefix (7 digits)
+
     for _ in range(NUM_TICKETS * 2):
         if len(ticket_combos) >= NUM_TICKETS:
             break
@@ -213,31 +271,38 @@ def main():
         if (att, ev) in ticket_combos:
             continue
         ticket_combos.add((att, ev))
+
+        # Combine the country code, company prefix, and product code for EAN
+        product_code = f"{random.randint(100000, 999999)}"  # Ticket code (6 digits)
+        ean_without_check = country_code + company_prefix + product_code
+        check_digit = calculate_check_digit(ean_without_check)
+        
+        # Final EAN-13 number
+        ean = ean_without_check + str(check_digit)
+        ticket_codes.append(ean)
+
         sql.append(
             f"INSERT INTO Ticket (type_id, purchase_date, cost, method_id, ean_number, status_id, attendee_id, event_id) VALUES "
             f"({random.randint(1, 5)}, '{today - datetime.timedelta(days=random.randint(1, 100))}', {round(random.uniform(20, 200), 2)}, "
-            f"{random.randint(1, 3)}, {random.randint(1000000000000, 9999999999999)}, {random.randint(1, 3)}, {att}, {ev});"
+            f"{random.randint(1, 3)}, {ean}, {random.randint(1, 3)}, {att}, {ev});"
         )
 
     # 11. Reviews
-    for _ in range(NUM_REVIEWS):
-        att = random.choice(attendees)
-        perf = random.choice(perf_ids)[0]
+    review_combos = set()
+    attempts = 0
+    max_attempts = NUM_REVIEWS * 10
+
+    while len(review_combos) < NUM_REVIEWS and attempts < max_attempts:
+        att = random.randint(1, NUM_ATTENDEES)
+        perf = random.randint(1, NUM_FESTIVALS * NUM_EVENTS_PER_FESTIVAL * NUM_PERFORMANCES_PER_EVENT)
+        if (att, perf) in review_combos:
+            attempts += 1
+            continue
+        review_combos.add((att, perf))
         sql.append(
             f"INSERT INTO Review (interpretation, sound_and_visuals, stage_presence, organization, overall, attendee_id, perf_id) VALUES "
             f"({random.randint(1,5)}, {random.randint(1,5)}, {random.randint(1,5)}, {random.randint(1,5)}, {random.randint(1,5)}, {att}, {perf});"
         )
-
-    # 12. Staff
-    for i in range(1, NUM_STAFF + 1):
-        dob = datetime.date(1975 + random.randint(0, 30), random.randint(1, 12), random.randint(1, 28))
-        role_id = random.randint(1, len(STAFF_ROLES))
-        exp_id = random.randint(1, 5)
-        sql.append(
-            f"INSERT INTO Staff (first_name, last_name, date_of_birth, role_id, experience_id, image, caption) VALUES "
-            f"('StaffFirst_{i}', 'StaffLast_{i}', '{dob}', {role_id}, {exp_id}, '{get_dummy_url()}', '{get_dummy_caption()}');"
-        )
-        sql.append(f"INSERT INTO Works_On (staff_id, event_id) VALUES ({i}, {random.randint(1, len(events))});")
 
     # Write to file
     out = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'sql', 'load.sql')
@@ -246,6 +311,7 @@ def main():
         f.write("-- Auto-generated SQL Load Script\n\n")
         f.write('\n'.join(sql))
     print(f"✅ Data generation complete. SQL written to {out}")
+
 
 # -------------------------------
 # ENTRY POINT
