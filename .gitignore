@@ -1,5 +1,40 @@
 # Ignore all .vscode folders
 .vscode/
 
-# Ignore any settings.json file anywhere in the project
+# Ignore settings.json anywhere
 **/settings.json
+
+# Ignore virtual environment
+venv/
+
+# Ignore Python bytecode
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore compiled SQL artifacts
+*.sql~
+*.sql.bak
+
+# Ignore log files
+*.log
+
+# Ignore backup or temporary files created by editors
+*~
+*.swp
+*.swo
+*.tmp
+
+# Ignore OS-specific junk
+.DS_Store
+Thumbs.db
+
+# Ignore environment files
+.env
+.env.*
+
+# Optional: ignore build or dist folders
+build/
+dist/
