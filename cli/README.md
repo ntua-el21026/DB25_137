@@ -12,7 +12,7 @@
 
 ---
 
-## 2. pyproject.toml (must be in root)
+## 2. Create file: pyproject.toml (must be in project root)
 
 ```toml
 [build-system]
@@ -83,7 +83,7 @@ Should return something like:
 
 ### If using `direnv` (recommended)
 
-Create `.envrc`:
+Create `.envrc` file in project root with the following contents:
 
 ```bash
 export DB_ROOT_USER=$(echo -n 'root' | tr -d '\r')

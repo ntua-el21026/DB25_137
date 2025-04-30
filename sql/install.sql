@@ -1,6 +1,6 @@
 -- Drop and recreate the database
 DROP DATABASE IF EXISTS pulse_university;
-CREATE DATABASE pulse_university;
+CREATE DATABASE IF NOT EXISTS pulse_university;
 USE pulse_university;
 
 -- Drop all tables
@@ -473,7 +473,6 @@ CREATE TABLE Resale_Interest (
     buyer_id INT UNSIGNED NOT NULL,
     event_id INT UNSIGNED NOT NULL,
     interest_timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    fulfilled BOOLEAN DEFAULT FALSE,
     FOREIGN KEY(buyer_id) REFERENCES Attendee(attendee_id)
         ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY(event_id) REFERENCES Event(event_id)
