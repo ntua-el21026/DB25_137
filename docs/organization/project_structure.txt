@@ -78,5 +78,8 @@
 │   ├── triggers.sql
 │   └── views.sql
 └── test
+    ├── test_cli.py
+    ├── test_load.py
+    └── test_load.sql
 
-13 directories, 66 files
+13 directories, 69 files

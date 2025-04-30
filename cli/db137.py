@@ -15,6 +15,7 @@ users rename          Rename a user account
 users passwd          Change user password
 users list            Show all users and their privileges
 users drop            Delete a database user entirely
+users drop-all        Delete all users defined on '%'
 users whoami          Show current DB connection info
 users set-defaults    Grant typical privileges (SELECT, INSERT, ...)
 
@@ -24,25 +25,20 @@ create-db             Create schema and deploy all SQL scripts
 load-db               Generate and load initial data (faker → load.sql)
 reset                 Shortcut for create-db + load-db
 erase                 Truncate all tables, preserving structure
+drop-db               Drop the entire schema
+status                Show row counts for each table in the schema
 
 TESTING
 -----------
-test                  Run test.py and all SQL test scripts in /test
+test-cli              Run test/test_cli.py only
+test-load             Run test/test_load.py and test_load.sql
 
 QUERIES
 -----------
 qX                    Run sql/queries/QX.sql and save to QX_out.txt
 qX-to-qY              Run range of queries and save results (e.g., q1-to-q4)
-
-Usage Examples
---------------
-$ export DB_ROOT_USER=root DB_ROOT_PASS=secret
-$ db137 create-db
-$ db137 load-db
-$ db137 test
-$ db137 q1
-$ db137 q3-to-q5
 """
+
 from __future__ import annotations
 
 import os
@@ -80,7 +76,6 @@ def cli(ctx, host, port, root_user, root_pass):
     ctx.obj = UserManager(
         dsn=dict(host=host, port=port, user=root_user, password=root_pass)
     )
-
 
 # ================== USER COMMANDS ===========================
 @cli.group()
@@ -137,8 +132,11 @@ def passwd_cmd(user_mgr: UserManager, username, new_pass):
 @click.pass_obj
 def list_users(user_mgr: UserManager):
     users = user_mgr.list_users()
-    for u in users:
-        click.echo(f"- {u}")
+    if not users:
+        click.echo("No registered users found.")
+    else:
+        for u in users:
+            click.echo(f"- {u}")
 
 @users.command("drop")
 @click.argument("username")
@@ -146,6 +144,15 @@ def list_users(user_mgr: UserManager):
 def drop(user_mgr: UserManager, username):
     user_mgr.drop_user(username)
     click.echo(f"Dropped user {username}.")
+
+@users.command("drop-all")
+@click.pass_obj
+def drop_all_users(user_mgr: UserManager):
+    """Delete all users defined on '%' (except system-reserved)."""
+    users = user_mgr.list_raw_users()
+    for u in users:
+        user_mgr.drop_user(u)
+        click.echo(f"Dropped user {u}")
 
 @users.command("whoami")
 @click.pass_obj
@@ -162,14 +169,13 @@ def set_defaults(user_mgr: UserManager, username, db):
     user_mgr.grant_privileges(username, db, defaults)
     click.echo(f"Granted default perms to {username} on {db}")
 
-
 # ================== DATABASE COMMANDS ===========================
 def _print_ok(msg: str) -> None:
     click.echo(f"[OK] {msg}")
 
 @cli.command("create-db")
 @click.option("--sql-dir", type=click.Path(exists=True, file_okay=False),
-              default=str(DEFAULT_SQL_DIR), show_default=True)
+                default=str(DEFAULT_SQL_DIR), show_default=True)
 @click.option("--database", default=DEFAULT_DB, show_default=True)
 @click.pass_obj
 def create_db(user_mgr: UserManager, sql_dir: str, database: str):
@@ -183,9 +189,9 @@ def create_db(user_mgr: UserManager, sql_dir: str, database: str):
 
 @cli.command("load-db")
 @click.option("--faker", "faker_script", type=click.Path(exists=True),
-              default=str(FAKER_SCRIPT), show_default=True)
+                default=str(FAKER_SCRIPT), show_default=True)
 @click.option("--sql-dir", type=click.Path(exists=True, file_okay=False),
-              default=str(DEFAULT_SQL_DIR), show_default=True)
+                default=str(DEFAULT_SQL_DIR), show_default=True)
 @click.option("--database", default=DEFAULT_DB, show_default=True)
 @click.pass_obj
 def load_db(user_mgr: UserManager, faker_script: str, sql_dir: str, database: str):
@@ -199,23 +205,67 @@ def load_db(user_mgr: UserManager, faker_script: str, sql_dir: str, database: st
 @click.pass_obj
 def erase(user_mgr: UserManager, database: str):
     click.confirm(f"Are you sure you want to TRUNCATE all tables in `{database}`?",
-                  abort=True)
+                    abort=True)
     user_mgr.truncate_tables(database)
     _print_ok("All data erased")
 
-@cli.command("test")
-@click.option("--test-dir", type=click.Path(exists=True, file_okay=False),
-              default=str(DEFAULT_TEST_DIR), show_default=True)
+@cli.command("drop-db")
 @click.option("--database", default=DEFAULT_DB, show_default=True)
 @click.pass_obj
-def test_cmd(user_mgr: UserManager, test_dir: str, database: str):
-    py = Path(test_dir) / "test.py"
+def drop_db(user_mgr: UserManager, database: str):
+    """Completely remove the schema and all objects."""
+    click.confirm(f"Drop entire schema `{database}`?", abort=True)
+    user_mgr.execute_sql_file(f"DROP DATABASE IF EXISTS `{database}`;")
+    _print_ok(f"Schema `{database}` dropped")
+
+@cli.command("status")
+@click.option("--database", default=DEFAULT_DB, show_default=True)
+@click.pass_obj
+def status(user_mgr: UserManager, database: str):
+    """Print table-wise row counts for the schema."""
+    with user_mgr._connect() as cnx, cnx.cursor() as cur:
+        cur.execute("SHOW FULL TABLES WHERE Table_type = 'BASE TABLE';")
+        tables = [row[0] for row in cur.fetchall()]
+        if not tables:
+            click.echo(f"No base tables found in `{database}`.")
+            return
+        for tbl in tables:
+            cur.execute(f"SELECT COUNT(*) FROM `{tbl}`;")
+            count = cur.fetchone()[0]
+            click.echo(f"{tbl:<32} {count:>6} rows")
+
+@cli.command("test-cli")
+@click.option("--test-dir", type=click.Path(exists=True, file_okay=False),
+                default=str(DEFAULT_TEST_DIR), show_default=True)
+def test_cli(test_dir: str):
+    """Run test/test_cli.py only."""
+    py = Path(test_dir) / "test_cli.py"
+    if not py.exists():
+        raise click.ClickException(f"Missing: {py}")
+    subprocess.check_call([sys.executable, py])
+    _print_ok("test_cli.py complete")
+    
+@cli.command("test-load")
+@click.option("--test-dir", type=click.Path(exists=True, file_okay=False),
+                default=str(DEFAULT_TEST_DIR), show_default=True)
+@click.option("--database", default=DEFAULT_DB, show_default=True)
+@click.pass_obj
+def test_load(user_mgr: UserManager, test_dir: str, database: str):
+    """Run test_load.py and test_load.sql."""
+    py = Path(test_dir) / "test_load.py"
+    sql = Path(test_dir) / "test_load.sql"
+
     if py.exists():
         subprocess.check_call([sys.executable, py])
-        _print_ok("test.py complete")
-    for sql_file in sorted(Path(test_dir).glob("*.sql")):
-        user_mgr.execute_sql_file(sql_file, database=database)
-        _print_ok(f"{sql_file.name}")
+        _print_ok("test_load.py complete")
+    else:
+        click.echo("[SKIP] test_load.py not found")
+
+    if sql.exists():
+        user_mgr.execute_sql_file(sql, database=database)
+        _print_ok("test_load.sql executed")
+    else:
+        click.echo("[SKIP] test_load.sql not found")
 
 @cli.command("reset")
 @click.pass_context
@@ -223,7 +273,6 @@ def reset(ctx):
     """Reset DB: create schema + load data"""
     ctx.invoke(create_db)
     ctx.invoke(load_db)
-
 
 # ================== QUERY COMMANDS ===========================
 @cli.command("qX")
@@ -260,7 +309,6 @@ def qrange_cmd(user_mgr: UserManager, qrange: str, database: str):
             continue
         user_mgr.run_query_to_file(sql_path, out_path, database=database)
         _print_ok(f"{sql_path.name} → {out_path.name}")
-
 
 if __name__ == "__main__":
     cli()

@@ -5,6 +5,7 @@ Thin wrapper around mysql-connector for managing DB users and running scripts.
 
 Public API
 ----------
+
 User management:
 ----------------
 UserManager.register_user(username, password)
@@ -14,12 +15,14 @@ UserManager.register_user(username, password)
             .change_password(username, new_pass)
             .drop_user(username)
             .list_users()
+            .list_raw_users()
             .whoami()
 
 Script execution:
 -----------------
 UserManager.execute_sql_file(path, database=None)
 UserManager.truncate_tables(database)
+UserManager.run_query_to_file(sql, out, database=...)
 
 Utilities:
 ----------
@@ -38,7 +41,6 @@ import mysql.connector
 from mysql.connector import errorcode
 
 __all__ = ["UserManager", "parse_priv_list"]
-
 
 # ---------------------------------------------------------------------------- #
 # Utility function – Normalize privilege list (e.g., "SELECT,INSERT")
@@ -95,7 +97,20 @@ class UserManager:
         )
 
     def list_users(self) -> list[str]:
-        """Return list of user names defined on '%'-host."""
+        """Return each user with their actual (non-USAGE) privileges."""
+        output = []
+        with self._connect() as cnx, cnx.cursor() as cur:
+            cur.execute("SELECT user FROM mysql.user WHERE host = '%';")
+            users = [row[0] for row in cur.fetchall()]
+            for user in users:
+                cur.execute(f"SHOW GRANTS FOR `{user}`@'%'")
+                grants = [row[0] for row in cur.fetchall() if "GRANT USAGE ON" not in row[0]]
+                if grants:
+                    output.append(f"{user}\n  " + "\n  ".join(grants))
+        return output
+
+    def list_raw_users(self) -> list[str]:
+        """Return raw list of usernames (used internally for drop-all)."""
         with self._connect() as cnx, cnx.cursor() as cur:
             cur.execute("SELECT user FROM mysql.user WHERE host = '%';")
             return [row[0] for row in cur.fetchall()]
@@ -144,7 +159,7 @@ class UserManager:
 
         with mysql.connector.connect(**params) as cnx, cnx.cursor() as cur:
             for _ in cur.execute(sql_source, multi=True):
-                pass  # Multi-execute consumes cursor automatically
+                pass
             cnx.commit()
             self._log.debug("Executed SQL file %s", path)
 
