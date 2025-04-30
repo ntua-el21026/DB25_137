@@ -266,20 +266,22 @@ CREATE TRIGGER trg_validate_performance_break
 BEFORE INSERT ON Performance
 FOR EACH ROW
 BEGIN
-	IF NEW.sequence_number > 1 THEN
-		DECLARE prevEnd DATETIME;
-		SELECT ADDDATE(datetime, INTERVAL duration MINUTE)
-		INTO   prevEnd
-		FROM   Performance
-		WHERE  event_id        = NEW.event_id
-			AND  sequence_number = NEW.sequence_number - 1
-		LIMIT  1;
+    DECLARE prevEnd DATETIME;
 
-		IF prevEnd IS NOT NULL
-			AND TIMESTAMPDIFF(MINUTE, prevEnd, NEW.datetime) NOT BETWEEN 5 AND 30 THEN
-			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Break must be 5-30 minutes.';
-		END IF;
-	END IF;
+    IF NEW.sequence_number > 1 THEN
+        SELECT ADDDATE(datetime, INTERVAL duration MINUTE)
+        INTO   prevEnd
+        FROM   Performance
+        WHERE  event_id        = NEW.event_id
+        	AND  sequence_number = NEW.sequence_number - 1
+        LIMIT  1;
+
+        IF prevEnd IS NOT NULL
+        	AND TIMESTAMPDIFF(MINUTE, prevEnd, NEW.datetime) NOT BETWEEN 5 AND 30 THEN
+            SIGNAL SQLSTATE '45000'
+                	SET MESSAGE_TEXT = 'Break must be 5-30 minutes.';
+        END IF;
+    END IF;
 END;
 //
 DELIMITER ;
@@ -315,22 +317,24 @@ CREATE TRIGGER trg_validate_performance_break_upd
 BEFORE UPDATE ON Performance
 FOR EACH ROW
 BEGIN
-	IF NEW.sequence_number > 1
-		AND (NEW.datetime <> OLD.datetime
-	    	OR NEW.sequence_number <> OLD.sequence_number) THEN
-		DECLARE prevEnd DATETIME;
-		SELECT ADDDATE(datetime, INTERVAL duration MINUTE)
-		INTO   prevEnd
-		FROM   Performance
-		WHERE  event_id        = NEW.event_id
-			AND  sequence_number = NEW.sequence_number - 1
-		LIMIT  1;
+    DECLARE prevEnd DATETIME;
 
-		IF prevEnd IS NOT NULL
-			AND TIMESTAMPDIFF(MINUTE, prevEnd, NEW.datetime) NOT BETWEEN 5 AND 30 THEN
-			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Break must be 5-30 minutes.';
-		END IF;
-	END IF;
+    IF NEW.sequence_number > 1
+    	AND (NEW.datetime <> OLD.datetime
+            OR NEW.sequence_number <> OLD.sequence_number) THEN
+        SELECT ADDDATE(datetime, INTERVAL duration MINUTE)
+        INTO   prevEnd
+        FROM   Performance
+        WHERE  event_id        = NEW.event_id
+        	AND  sequence_number = NEW.sequence_number - 1
+        LIMIT  1;
+
+        IF prevEnd IS NOT NULL
+        	AND TIMESTAMPDIFF(MINUTE, prevEnd, NEW.datetime) NOT BETWEEN 5 AND 30 THEN
+            SIGNAL SQLSTATE '45000'
+                	SET MESSAGE_TEXT = 'Break must be 5-30 minutes.';
+        END IF;
+    END IF;
 END;
 //
 DELIMITER ;

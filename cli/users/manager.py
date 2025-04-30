@@ -34,11 +34,12 @@ from __future__ import annotations
 
 import contextlib
 import logging
+import re
 from pathlib import Path
 from typing import Iterable, List, Sequence
 
 import mysql.connector
-from mysql.connector import errorcode
+from mysql.connector.cursor_cext import CMySQLCursor
 
 __all__ = ["UserManager", "parse_priv_list"]
 
@@ -65,6 +66,7 @@ def parse_priv_list(raw: str | Iterable[str]) -> List[str]:
 # ---------------------------------------------------------------------------- #
 class UserManager:
     def __init__(self, dsn: dict):
+        print("▶ LOADED manager.py from", __file__)
         self._dsn = dsn
         self._log = logging.getLogger(self.__class__.__name__)
 
@@ -72,32 +74,27 @@ class UserManager:
     # 1. USER ACCOUNT MANAGEMENT
     # ------------------------------------------------------------------------ #
     def register_user(self, username: str, password: str) -> None:
-        """Create a new MySQL user with password (if not exists)."""
         self._execute_sql(
             "CREATE USER IF NOT EXISTS %(u)s@'%%' IDENTIFIED BY %(p)s;",
             {"u": username, "p": password},
         )
 
     def drop_user(self, username: str) -> None:
-        """Delete user from the database (if exists)."""
         self._execute_sql("DROP USER IF EXISTS %(u)s@'%';", {"u": username})
 
     def change_username(self, old: str, new: str) -> None:
-        """Rename an existing MySQL user."""
         self._execute_sql(
             "RENAME USER %(old)s@'%%' TO %(new)s@'%%';",
             {"old": old, "new": new}
         )
 
     def change_password(self, username: str, new_password: str) -> None:
-        """Change the password of an existing user."""
         self._execute_sql(
             "ALTER USER %(u)s@'%%' IDENTIFIED BY %(p)s;",
             {"u": username, "p": new_password},
         )
 
     def list_users(self) -> list[str]:
-        """Return each user with their actual (non-USAGE) privileges."""
         output = []
         with self._connect() as cnx, cnx.cursor() as cur:
             cur.execute("SELECT user FROM mysql.user WHERE host = '%';")
@@ -110,13 +107,11 @@ class UserManager:
         return output
 
     def list_raw_users(self) -> list[str]:
-        """Return raw list of usernames (used internally for drop-all)."""
         with self._connect() as cnx, cnx.cursor() as cur:
             cur.execute("SELECT user FROM mysql.user WHERE host = '%';")
             return [row[0] for row in cur.fetchall()]
 
     def whoami(self) -> str:
-        """Returns the current connection's MySQL user."""
         with self._connect() as cnx, cnx.cursor() as cur:
             cur.execute("SELECT CURRENT_USER();")
             return cur.fetchone()[0]
@@ -124,18 +119,14 @@ class UserManager:
     # ------------------------------------------------------------------------ #
     # 2. PRIVILEGE CONTROL
     # ------------------------------------------------------------------------ #
-    def grant_privileges(self, username: str, database: str,
-                            privileges: Sequence[str]) -> None:
-        """Grant specific privileges to a user on a database."""
+    def grant_privileges(self, username: str, database: str, privileges: Sequence[str]) -> None:
         priv_clause = ", ".join(privileges)
         self._execute_sql(
             f"GRANT {priv_clause} ON `{database}`.* TO %(u)s@'%%';",
             {"u": username},
         )
 
-    def revoke_privileges(self, username: str, database: str,
-                            privileges: Sequence[str]) -> None:
-        """Revoke specific privileges from a user on a database."""
+    def revoke_privileges(self, username: str, database: str, privileges: Sequence[str]) -> None:
         priv_clause = ", ".join(privileges)
         self._execute_sql(
             f"REVOKE {priv_clause} ON `{database}`.* FROM %(u)s@'%%';",
@@ -145,26 +136,84 @@ class UserManager:
     # ------------------------------------------------------------------------ #
     # 3. SQL FILE EXECUTION / DATA MANAGEMENT
     # ------------------------------------------------------------------------ #
-    def execute_sql_file(self, path: str | Path, *,
-                            database: str | None = None) -> None:
+    def execute_sql_file(self, path: str | Path, *, database: str | None = None) -> None:
         """
-        Run all statements from a .sql file. Supports multi-statement files.
+        Run every statement in a .sql file by opening one small, autocommitting
+        connection per statement.  Compatible with MySQL 5.7 and avoids any
+        “commands out of sync” errors since we never leave a pending result set
+        nor call commit() on a dying connection.
         """
-        path = Path(path)
-        sql_source = path.read_text(encoding="utf-8")
+        # 1. Read file and strip out /* … */ block comments
+        sql_text = Path(path).read_text(encoding="utf-8")
+        sql_text = re.sub(r"/\*.*?\*/", "\n", sql_text, flags=re.S)
 
-        params = self._dsn.copy()
-        if database:
-            params["database"] = database
+        # 2. Split into statements (honouring DELIMITER changes)
+        delimiter = ";"
+        buf       = ""
+        statements: list[str] = []
 
-        with mysql.connector.connect(**params) as cnx, cnx.cursor() as cur:
-            for _ in cur.execute(sql_source, multi=True):
-                pass
-            cnx.commit()
-            self._log.debug("Executed SQL file %s", path)
+        for raw in sql_text.splitlines():
+            line = raw.rstrip()
+            # skip single-line comments or decorative headers
+            if re.match(r"^\s*(--|#)", line) or re.match(r"^\s*-{3,}", line):
+                continue
+            # handle “DELIMITER xxx”
+            mdel = re.match(r"^\s*DELIMITER\s+(.+)$", line, re.I)
+            if mdel:
+                delimiter = mdel.group(1).strip()
+                continue
+
+            buf += line + "\n"
+            if not line.endswith(delimiter):
+                continue
+
+            stmt = buf.rstrip()[:-len(delimiter)].strip()
+            buf  = ""
+            if stmt:
+                statements.append(stmt)
+
+        if buf.strip():
+            statements.append(buf.strip())
+
+        # 3. Execute each statement in its own autocommit connection
+        current_db = database
+        for stmt in statements:
+            # a) Handle “USE foo”
+            muse = re.match(r"^\s*USE\s+`?(\w+)`?\s*$", stmt, re.I)
+            if muse:
+                current_db = muse.group(1)
+                continue
+
+            # b) Rewrite “DROP INDEX IF EXISTS” → “DROP INDEX …”
+            mdrop = re.match(
+                r"^\s*DROP\s+INDEX\s+IF\s+EXISTS\s+`?(\w+)`?\s+ON\s+`?(\w+)`?\s*$",
+                stmt, re.I
+            )
+            if mdrop:
+                idx, tbl = mdrop.groups()
+                stmt = f"DROP INDEX `{idx}` ON `{tbl}`"
+
+            # c) Build connection params (with autocommit!)
+            params = self._dsn.copy()
+            if current_db:
+                params["database"] = current_db
+            params["autocommit"] = True
+
+            # d) Run it
+            try:
+                with mysql.connector.connect(**params) as cnx, \
+                     cnx.cursor()           as cur:
+                    cur.execute(stmt)
+            except mysql.connector.Error as err:
+                # silently ignore “1091: Can’t drop … doesn’t exist”
+                if err.errno == 1091 and mdrop:
+                    continue
+                self._log.warning(
+                    "Statement failed in %s:\n%s\nError: %s",
+                    Path(path).name, stmt, err
+                )
 
     def truncate_tables(self, database: str) -> None:
-        """TRUNCATE all base tables in the schema, ignoring foreign keys temporarily."""
         params = self._dsn.copy()
         params["database"] = database
         with mysql.connector.connect(**params) as cnx, cnx.cursor() as cur:
@@ -177,9 +226,7 @@ class UserManager:
             cnx.commit()
             self._log.info("Truncated %d tables in %s", len(tables), database)
 
-    def run_query_to_file(self, sql_path: str | Path, out_path: str | Path,
-                          *, database: str) -> None:
-        """Execute a single SQL file and write results (if any) to a .txt file."""
+    def run_query_to_file(self, sql_path: str | Path, out_path: str | Path, *, database: str) -> None:
         sql_path = Path(sql_path)
         out_path = Path(out_path)
         sql = sql_path.read_text(encoding="utf-8")
@@ -200,11 +247,7 @@ class UserManager:
             else:
                 f.write("(no rows)\n")
 
-    # ------------------------------------------------------------------------ #
-    # 4. INTERNAL – SQL execution with param binding
-    # ------------------------------------------------------------------------ #
     def _execute_sql(self, stmt: str, params: dict | None = None) -> None:
-        """Run a single SQL statement with optional param binding."""
         with self._connect() as cnx, cnx.cursor() as cur:
             try:
                 cur.execute(stmt, params or {})
@@ -217,7 +260,6 @@ class UserManager:
 
     @contextlib.contextmanager
     def _connect(self):
-        """Context-managed connection to the DB using stored DSN."""
         cnx = mysql.connector.connect(**self._dsn)
         try:
             yield cnx
