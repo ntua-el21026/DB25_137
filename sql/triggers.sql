@@ -642,3 +642,114 @@ BEGIN
 END;
 //
 DELIMITER ;
+
+-- ===========================================================
+-- 9. Auto-match offers 
+-- ===========================================================
+
+-- Trigger 30: Match one resale interest with the FIFO offer queue
+--             (auto-buy ticket if seller exists)
+
+DELIMITER //
+CREATE TRIGGER trg_match_resale_interest
+AFTER INSERT ON Resale_Interest
+FOR EACH ROW
+BEGIN
+	DECLARE v_event  INT;
+    DECLARE v_type   INT;
+    DECLARE v_ticket INT;
+	DECLARE v_buyer  INT;
+    DECLARE v_offer  INT;
+	DECLARE sActive  INT;
+
+	/* status id for 'active' */
+	SELECT	status_id INTO sActive
+	FROM	Ticket_Status
+	WHERE	name = 'active'
+	LIMIT	1;
+
+	/* interest details */
+	SET v_event = NEW.event_id;
+	SET v_buyer = NEW.buyer_id;
+
+	/* find earliest matching offer (FIFO) */
+	SELECT	ro.offer_id, ro.ticket_id, t.type_id
+	INTO	v_offer, v_ticket, v_type
+	FROM	Resale_Interest_Type rit
+			JOIN Ticket       t  ON t.type_id    = rit.type_id
+			JOIN Resale_Offer ro ON ro.ticket_id = t.ticket_id
+	WHERE	rit.request_id = NEW.request_id
+		AND	ro.event_id    = v_event
+	ORDER BY ro.offer_timestamp
+	LIMIT 1;
+
+	/* if offer found, perform transaction */
+	IF v_offer IS NOT NULL THEN
+
+		/* transfer ticket */
+		UPDATE	Ticket
+		SET		attendee_id = v_buyer,
+				status_id   = sActive        -- ensure ticket is active
+		WHERE	ticket_id   = v_ticket;
+
+		/* remove offer and interest */
+		DELETE FROM Resale_Offer    WHERE offer_id   = v_offer;
+        DELETE FROM Resale_Interest WHERE request_id = NEW.request_id;
+	END IF;
+END;
+//
+DELIMITER ;
+
+-- Trigger 31: Match one resale offer with the FIFO interest queue
+--             (auto-sell ticket if buyer exists)
+
+DELIMITER //
+CREATE TRIGGER trg_match_resale_offer
+AFTER INSERT ON Resale_Offer
+FOR EACH ROW
+BEGIN
+	DECLARE v_ticket   INT;
+	DECLARE v_event    INT;
+	DECLARE v_type     INT;
+	DECLARE v_buyer    INT;
+	DECLARE v_interest INT;
+	DECLARE sActive    INT;
+
+	/* status id for 'active' */
+	SELECT	status_id INTO sActive
+	FROM	Ticket_Status
+	WHERE	name = 'active'
+	LIMIT	1;
+
+	/* offer details */
+	SELECT	t.ticket_id, t.event_id, t.type_id
+	INTO	v_ticket, v_event, v_type
+	FROM	Ticket t
+	WHERE	t.ticket_id = NEW.ticket_id;
+
+	/* find earliest matching interest (FIFO) */
+	SELECT	ri.request_id, ri.buyer_id
+	INTO	v_interest, v_buyer
+	FROM	Resale_Interest ri
+			JOIN Resale_Interest_Type rit ON ri.request_id = rit.request_id
+	WHERE	ri.event_id  = v_event
+		AND	rit.type_id  = v_type
+	ORDER BY ri.interest_timestamp
+	LIMIT 1;
+
+	/* if buyer found, perform transaction */
+	IF v_buyer IS NOT NULL THEN
+
+		/* transfer ticket */
+		UPDATE	Ticket
+		SET		attendee_id = v_buyer,
+				status_id   = sActive        -- ensure ticket is active
+		WHERE	ticket_id   = v_ticket;
+
+		/* remove interest and offer */
+		DELETE FROM Resale_Offer    WHERE offer_id   = NEW.offer_id;
+		DELETE FROM Resale_Interest WHERE request_id = v_interest;
+	END IF;
+END;
+//
+DELIMITER ;
