@@ -12,9 +12,9 @@ def ensure_trailing_newline(file_path):
                 f.write(b'\n')
                 print(f"✔️  Added final newline to: {file_path}")
     except OSError:
-        print(f"⚠️  Skipping binary or unreadable file: {file_path}")
+        print(f"Skipping binary or unreadable file: {file_path}")
     except Exception as e:
-        print(f"❌ Error processing {file_path}: {e}")
+        print(f"Error processing {file_path}: {e}")
 
 def main():
     # Start from the project root
@@ -30,7 +30,7 @@ def main():
                 path = os.path.join(root, file)
                 ensure_trailing_newline(path)
 
-    print("\n✅ Done checking all code files.")
+    print("\nDone checking all code files.")
 
 if __name__ == "__main__":
     main()

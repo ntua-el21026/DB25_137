@@ -29,7 +29,7 @@ def main():
         with open(txt_file_path, "w", encoding="utf-8") as txt_file:
             txt_file.write(f"-- Output of query {q_number}\n")
 
-        print(f"✅ Created {q_number}.sql and {q_number}_out.txt")
+        print(f"Created {q_number}.sql and {q_number}_out.txt")
 
     print(f"\nDone checking and generating files in: {queries_folder}")
 
