@@ -1,4 +1,5 @@
 -- SQL query for Q13
+
 SELECT
     ac.artist_id,
     ac.artist_name,

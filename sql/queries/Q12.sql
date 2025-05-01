@@ -1,26 +1,25 @@
 -- SQL query for Q12
+-- We assume that the working day an event takes place
+-- is the calendar date in which it starts
+
 SELECT
-    f.fest_year,
-    DATE(p.datetime) AS perf_date,
-    e.event_id,
-    e.title AS event_title,
-    s.capacity,
-    
-    -- Required staff
-    CEIL(s.capacity * 0.05) AS required_security,
-    CEIL(s.capacity * 0.02) AS required_support,
-
-    -- Actual staff counts
-    SUM(CASE WHEN sr.name = 'security' THEN 1 ELSE 0 END) AS security_count,
-    SUM(CASE WHEN sr.name = 'support'  THEN 1 ELSE 0 END) AS support_count
-
+    DATE(e.start_dt) AS event_day,
+    sr.name AS staff_role,
+    SUM(
+        CASE
+            WHEN sr.name = 'security' THEN CEIL(s.capacity * 0.05)
+            WHEN sr.name = 'support'  THEN CEIL(s.capacity * 0.02)
+        END
+    ) AS required_staff
 FROM Event e
-JOIN Festival f ON e.fest_year = f.fest_year
-JOIN Stage s ON e.stage_id = s.stage_id
-JOIN Performance p ON p.event_id = e.event_id
-JOIN Works_On wo ON wo.event_id = e.event_id
-JOIN Staff st ON wo.staff_id = st.staff_id
-JOIN Staff_Role sr ON st.role_id = sr.role_id
+JOIN Stage      s  ON e.stage_id  = s.stage_id
+JOIN Staff_Role sr ON sr.name IN ('security', 'support')    -- idx_staff_role_name
+JOIN Festival   f  ON e.fest_year = f.fest_year             -- idx_event_year
+WHERE f.fest_year = 2025  -- or any other valid festival year
+GROUP BY event_day, sr.name
+ORDER BY event_day, sr.name;
 
-GROUP BY f.fest_year, perf_date, e.event_id, e.title, s.capacity
-ORDER BY f.fest_year, perf_date, e.event_id;
+-- Indexes used
+-- idx_event_start: Event(start_dt)
+-- idx_staff_role_name: Staff_Role(name)
+-- idx_event_year: Event(fest_year)

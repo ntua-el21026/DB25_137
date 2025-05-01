@@ -1,25 +1,26 @@
 -- SQL query for Q9
-WITH Yearly_Visit_Counts AS (
-    SELECT
-        t.attendee_id,
-        YEAR(t.purchase_date) AS year,
-        COUNT(DISTINCT t.event_id) AS event_count
-    FROM Ticket t
-    GROUP BY t.attendee_id, YEAR(t.purchase_date)
-    HAVING COUNT(DISTINCT t.event_id) > 3
+
+WITH FilteredCounts AS (
+    SELECT *
+    FROM View_Attendee_Yearly_Visits
+    WHERE events_attended > 3
 ),
-Matching_Visits AS (
-    SELECT year, event_count
-    FROM Yearly_Visit_Counts
-    GROUP BY year, event_count
+MatchingCounts AS (
+    SELECT festival_year, events_attended
+    FROM FilteredCounts
+    GROUP BY festival_year, events_attended
     HAVING COUNT(*) > 1
 )
 SELECT
-    yvc.attendee_id,
+    fc.attendee_id,
     CONCAT(a.first_name, ' ', a.last_name) AS attendee_name,
-    yvc.year,
-    yvc.event_count
-FROM Yearly_Visit_Counts yvc
-JOIN Matching_Visits mv ON yvc.year = mv.year AND yvc.event_count = mv.event_count
-JOIN Attendee a ON a.attendee_id = yvc.attendee_id
-ORDER BY yvc.year, yvc.event_count DESC;
+    fc.festival_year,
+    fc.events_attended
+FROM FilteredCounts fc
+JOIN MatchingCounts mc ON  fc.festival_year   = mc.festival_year
+                       AND fc.events_attended = mc.events_attended
+JOIN Attendee       a  ON  fc.attendee_id     = a.attendee_id
+ORDER BY fc.festival_year, fc.events_attended DESC;
+
+-- Index used
+-- idx_ticket_event_date_payment: Ticket(event_id, purchase_date, method_id)

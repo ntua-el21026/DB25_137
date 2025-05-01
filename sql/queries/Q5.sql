@@ -1,13 +1,27 @@
 -- SQL query for Q5
+
+WITH ArtistCounts AS (
+    SELECT
+        a.artist_id,
+        CONCAT(a.first_name, ' ', a.last_name) AS artist_name,
+        TIMESTAMPDIFF(YEAR, a.date_of_birth, CURDATE()) AS age,
+        COUNT(pa.perf_id) AS performance_count
+    FROM Artist a
+    JOIN Performance_Artist pa ON a.artist_id = pa.artist_id    -- idx_perf_artist
+    WHERE TIMESTAMPDIFF(YEAR, a.date_of_birth, CURDATE()) < 30  -- idx_artist_dob
+    GROUP BY a.artist_id, artist_name
+),
+MaxCount AS (
+    SELECT MAX(performance_count) AS max_perf FROM ArtistCounts
+)
 SELECT
-    a.artist_id,
-    CONCAT(a.first_name, ' ', a.last_name) AS artist_name,
-    TIMESTAMPDIFF(YEAR, a.date_of_birth, CURDATE()) AS age,
-    COUNT(DISTINCT p.event_id) AS festival_appearances
-FROM Artist a
-JOIN Performance_Artist pa ON a.artist_id = pa.artist_id
-JOIN Performance p ON pa.perf_id = p.perf_id
-JOIN Event e ON p.event_id = e.event_id
-WHERE TIMESTAMPDIFF(YEAR, a.date_of_birth, CURDATE()) < 30
-GROUP BY a.artist_id, artist_name
-ORDER BY festival_appearances DESC;
+    ac.artist_id,
+    ac.artist_name,
+    ac.age,
+    ac.performance_count
+FROM ArtistCounts ac
+JOIN MaxCount mc ON ac.performance_count = mc.max_perf;
+
+-- Indexes used
+-- idx_perf_artist: Performance_Artist(artist_id, perf_id)
+-- idx_artist_dob: Artist(date_of_birth)
