@@ -1,7 +1,7 @@
 
 # Pulse University – DB137 CLI
 
-A command-line interface for administering the Pulse University Festival relational database system (2024–2025).
+A command-line interface for administering the Pulse University Festival database system (2024–2025).
 
 ---
 
@@ -84,10 +84,8 @@ which db137
 The CLI requires DB root credentials. Best practice is to define them in a `.envrc` file:
 
 ```bash
-export DB_ROOT_USER=$(echo -n 'root' | tr -d '
-')
-export DB_ROOT_PASS=$(echo -n 'yourpassword' | tr -d '
-')
+export DB_ROOT_USER=$(echo -n 'root' | tr -d '')
+export DB_ROOT_PASS=$(echo -n 'yourpassword' | tr -d '')
 export PYTHONPATH=$PWD
 ```
 
@@ -117,14 +115,6 @@ db137 <command> ...
 - `users drop-all`
 - `users whoami`
 - `users set-defaults [--show-diff]`
-
-Examples:
-
-```bash
-db137 users register alice --password pass
-db137 users grant alice --db pulse_university --privileges SELECT,INSERT
-db137 users revoke alice --db pulse_university --privileges SELECT --show-diff
-```
 
 ---
 
