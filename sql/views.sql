@@ -5,7 +5,6 @@
 USE pulse_university;
 
 /* ============  drop old versions if they exist  ============ */
-DROP VIEW IF EXISTS View_Festival_Revenue;
 DROP VIEW IF EXISTS View_Artist_Performance;
 DROP VIEW IF EXISTS View_Event_Staff;
 DROP VIEW IF EXISTS View_Attendee_Performance;
@@ -16,20 +15,7 @@ DROP VIEW IF EXISTS View_Genre_Year_Counts;
 DROP VIEW IF EXISTS View_Attendee_Yearly_Visits;
 
 /* ------------------------------------------------------------
- * View 1 – revenue by festival year & payment method (Q 1)
- * ------------------------------------------------------------*/
-CREATE VIEW View_Festival_Revenue AS
-SELECT  f.fest_year,
-        pm.name     AS payment_method,
-        SUM(t.cost) AS total_revenue
-FROM    Ticket t
-JOIN    Event    e ON t.event_id  = e.event_id
-JOIN    Festival f ON e.fest_year = f.fest_year
-JOIN    Payment_Method pm ON t.method_id = pm.method_id
-GROUP BY f.fest_year, pm.name;
-
-/* ------------------------------------------------------------
- * View 2 – artist workload & average ratings (Q 4, 11)
+ * View 1 – artist workload & average ratings (Q 4, 11)
  * ------------------------------------------------------------*/
 CREATE VIEW View_Artist_Performance AS
 SELECT  a.artist_id,
@@ -43,7 +29,7 @@ LEFT JOIN Review             r  ON pa.perf_id  = r.perf_id
 GROUP BY a.artist_id, artist_name;
 
 /* ------------------------------------------------------------
- * View 3 – event staffing vs required ratios (Q 7, 12)
+ * View 2 – event staffing vs required ratios (Q 7, 12)
  * ------------------------------------------------------------*/
 CREATE VIEW View_Event_Staff AS
 SELECT e.event_id, e.title, s.capacity,
@@ -62,7 +48,7 @@ JOIN    Stage    s  ON e.stage_id  = s.stage_id
 GROUP BY e.event_id, e.title, s.capacity;
 
 /* ------------------------------------------------------------
- * View 4 – attendee’s watched performances & own rating (Q 6)
+ * View 3 – attendee’s watched performances & own rating (Q 6)
  * ------------------------------------------------------------*/
 CREATE VIEW View_Attendee_Performance AS
 SELECT  att.attendee_id,
@@ -75,25 +61,34 @@ JOIN      Event       e   ON t.event_id      = e.event_id
 JOIN      Performance p   ON p.event_id      = e.event_id
 JOIN      Attendee    att ON att.attendee_id = t.attendee_id
 LEFT JOIN Review      r   ON r.perf_id       = p.perf_id
-                         AND r.attendee_id   = att.attendee_id
+                          AND r.attendee_id  = att.attendee_id
 GROUP BY att.attendee_id, attendee_name, p.perf_id, e.title;
 
 /* ------------------------------------------------------------
- * View 5 – unique artist-genre pairs & artist count (Q 10)
+ * View 4 – unique artist-genre pairs & artist count (Q 10)
+            only for artist that actually have performed
  * ------------------------------------------------------------*/
 CREATE VIEW View_Genre_Pairs AS
-SELECT  LEAST(ag1.genre_id, ag2.genre_id)    AS genre_id1,
-        GREATEST(ag1.genre_id, ag2.genre_id) AS genre_id2,
-        COUNT(DISTINCT ag1.artist_id)        AS artist_count
-FROM    Artist_Genre ag1
-JOIN    Artist_Genre ag2
-        	ON ag1.artist_id = ag2.artist_id
-        	AND ag1.genre_id < ag2.genre_id
-GROUP BY LEAST(ag1.genre_id, ag2.genre_id),
-        	GREATEST(ag1.genre_id, ag2.genre_id);
+SELECT
+    LEAST(ag1.genre_id, ag2.genre_id)    AS genre_id1,
+    GREATEST(ag1.genre_id, ag2.genre_id) AS genre_id2,
+    COUNT(DISTINCT ag1.artist_id)        AS artist_count
+FROM Artist_Genre ag1
+JOIN Artist_Genre ag2
+  ON ag1.artist_id = ag2.artist_id AND ag1.genre_id < ag2.genre_id
+WHERE ag1.artist_id IN (
+    SELECT DISTINCT pa.artist_id
+    FROM Performance_Artist pa
+    JOIN Performance p ON pa.perf_id  = p.perf_id
+    JOIN Event       e ON p.event_id  = e.event_id
+    JOIN Festival    f ON e.fest_year = f.fest_year
+    WHERE f.fest_year < YEAR(CURDATE())
+)
+GROUP BY genre_id1, genre_id2;
+
 
 /* ------------------------------------------------------------
- * View 6 – artists & number of continents performed in (Q 13)
+ * View 5 – artists & number of continents performed in (Q 13)
  * ------------------------------------------------------------*/
 CREATE VIEW View_Artist_Continents AS
 SELECT  a.artist_id,
@@ -108,25 +103,25 @@ JOIN    Location           l  ON f.loc_id    = l.loc_id
 GROUP BY a.artist_id, artist_name;
 
 /* ------------------------------------------------------------
- * View 7 – handy performance detail (Q 2, 3, 5, 11 & others)
- *   • one row per performer–performance, with fest year & type
+ * View 6 – handy performance detail (Q 2, 3, 5, 11 & others)
+ *          one row per performer–performance, with fest year & type
  * ------------------------------------------------------------*/
 CREATE VIEW View_Performance_Detail AS
-SELECT  p.perf_id,
-        p.event_id,
-        e.fest_year,
-        pt.name AS perf_type,
-        p.datetime,
-        pa.artist_id,
-        pb.band_id
-FROM    Performance p
+SELECT p.perf_id,
+       p.event_id,
+       e.fest_year,
+       pt.name AS perf_type,
+       p.datetime,
+       pa.artist_id,
+       pb.band_id
+FROM Performance p
 JOIN      Event              e  ON p.event_id = e.event_id
 JOIN      Performance_Type   pt ON p.type_id  = pt.type_id
 LEFT JOIN Performance_Artist pa ON pa.perf_id = p.perf_id
 LEFT JOIN Performance_Band   pb ON pb.perf_id = p.perf_id;
 
 /* ------------------------------------------------------------
- * View 8 – yearly appearances per genre (Q 14)
+ * View 7 – yearly appearances per genre (Q 14)
  * ------------------------------------------------------------*/
 CREATE VIEW View_Genre_Year_Counts AS
 SELECT  g.genre_id,
@@ -139,7 +134,7 @@ JOIN    Genre        g  ON g.genre_id   = ag.genre_id
 GROUP BY g.genre_id, g.name, d.fest_year;
 
 /* ------------------------------------------------------------
- * View 9 – attendee visit count per calendar year (Q 9, 15)
+ * View 8 – attendee visit count per calendar year (Q 9)
  * ------------------------------------------------------------*/
 CREATE VIEW View_Attendee_Yearly_Visits AS
 SELECT  t.attendee_id,
@@ -147,3 +142,15 @@ SELECT  t.attendee_id,
         COUNT(DISTINCT t.event_id) AS events_attended
 FROM    Ticket t
 GROUP BY t.attendee_id, YEAR(t.purchase_date);
+
+/* ------------------------------------------------------------
+ * View 9 – aggregates per attendee–artist pair (Q 15)
+ * ------------------------------------------------------------*/
+CREATE VIEW View_Attendee_Artist_Review AS
+SELECT
+    r.attendee_id,
+    pa.artist_id,
+    SUM(r.overall) AS total_score
+FROM Review r
+JOIN Performance_Artist pa ON r.perf_id = pa.perf_id
+GROUP BY r.attendee_id, pa.artist_id;
