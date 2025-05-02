@@ -28,11 +28,6 @@ erase                 Truncate all tables, preserving structure
 drop-db               Drop the entire schema
 status                Show row counts for each table in the schema
 
-TESTING
------------
-test-cli              Run test/test_cli.py only
-test-load             Run test/test_load.py and test_load.sql
-
 QUERIES
 -----------
 qX                    Run sql/queries/QX.sql and save to QX_out.txt
@@ -49,21 +44,21 @@ from pathlib import Path
 from typing import List
 
 import click
-from click import argument, command
+from click import argument
+import mysql.connector
 
 CURRENT_FILE = Path(__file__).resolve()
 PROJECT_ROOT = CURRENT_FILE.parents[1]
 if str(PROJECT_ROOT.parent) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT.parent))
 
-from cli.users.manager import UserManager, parse_priv_list  # noqa
+from cli.users.manager import UserManager, parse_priv_list
 
 DEFAULT_DB = "pulse_university"
 DEFAULT_SQL_DIR = PROJECT_ROOT / "sql"
 DEFAULT_TEST_DIR = PROJECT_ROOT.parent / "test"
 FAKER_SCRIPT = PROJECT_ROOT.parent / "code" / "data_generation" / "faker.py"
 QUERIES_DIR = DEFAULT_SQL_DIR / "queries"
-TEST_PY = DEFAULT_TEST_DIR / "test.py"
 
 @click.group(context_settings=dict(help_option_names=["-h", "--help"]))
 @click.option("--host", default="localhost", show_default=True)
@@ -72,9 +67,50 @@ TEST_PY = DEFAULT_TEST_DIR / "test.py"
 @click.option("--root-pass", envvar="DB_ROOT_PASS", required=True)
 @click.pass_context
 def cli(ctx, host, port, root_user, root_pass):
-    ctx.obj = UserManager(
-        dsn=dict(host=host, port=port, user=root_user, password=root_pass)
+    user_mgr = UserManager(
+        root_user=root_user,
+        root_pass=root_pass,
+        host=host,
+        port=port
     )
+
+    # Try to establish DB connection and identify user
+    try:
+        ctx.obj = user_mgr
+        ctx.obj._connected_user = user_mgr.whoami()
+    except mysql.connector.Error as err:
+        raise click.ClickException(
+            f"[DB Connection Error] Unable to connect as '{root_user}':\n{err}"
+        )
+
+def require_root(user_mgr: UserManager):
+    if not user_mgr.is_root():
+        raise click.ClickException("This command is restricted to root users.")
+
+def require_root_or_self(user_mgr: UserManager, target: str):
+    current_user = user_mgr.connected_user().split("@")[0]
+    if not user_mgr.is_root() and current_user != target:
+        raise click.ClickException("You can only modify your own account.")
+    
+def print_privs(user_mgr: UserManager, username: str, db: str):
+    """
+    Utility: Show granted privileges for a user on a specific database.
+    """
+    with user_mgr._connect() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT privilege_type
+                FROM information_schema.schema_privileges
+                WHERE grantee = %s AND table_schema = %s
+            """, (f"'{username}'@'%'", db))
+            rows = cursor.fetchall()
+            if not rows:
+                click.echo("  (none)")
+            else:
+                for r in sorted(p[0] for p in rows):
+                    click.echo(f"  - {r}")
+
+# -------------------- USERS --------------------
 
 @cli.group()
 def users():
@@ -88,33 +124,61 @@ def users():
 @click.option("--privileges", default="FULL", show_default=True)
 @click.pass_obj
 def register(user_mgr: UserManager, username, password, default_db, privileges):
-    user_mgr.register_user(username, password)
-    user_mgr.grant_privileges(username, default_db, parse_priv_list(privileges))
-    click.echo(f"User '{username}' created and granted.")
+    """Create a user with schema privileges and optional login access."""
+    require_root(user_mgr)
+    parsed_privs = parse_priv_list(privileges)
+    user_mgr.register_user(username, password, default_db, parsed_privs)
+    click.echo(f"User '{username}' registered. Use `db137 users list` to verify grants.")
 
 @users.command("grant")
 @click.argument("username")
 @click.option("--db", required=True)
 @click.option("--privileges", required=True)
+@click.option("--show-diff", is_flag=True, help="Display privilege changes")
 @click.pass_obj
-def grant(user_mgr: UserManager, username, db, privileges):
-    user_mgr.grant_privileges(username, db, parse_priv_list(privileges))
+def grant(user_mgr: UserManager, username, db, privileges, show_diff):
+    require_root(user_mgr)
+    priv_list = parse_priv_list(privileges)
+
+    # Show current privileges (optional)
+    if show_diff:
+        click.echo(f"Before:\n  {username}@% →")
+        print_privs(user_mgr, username, db)
+
+    user_mgr.grant_privileges(username, db, priv_list)
     click.echo(f"Granted {privileges} on {db} to {username}.")
+
+    if show_diff:
+        click.echo(f"After:\n  {username}@% →")
+        print_privs(user_mgr, username, db)
 
 @users.command("revoke")
 @click.argument("username")
 @click.option("--db", required=True)
 @click.option("--privileges", required=True)
+@click.option("--show-diff", is_flag=True, help="Display privilege changes")
 @click.pass_obj
-def revoke(user_mgr: UserManager, username, db, privileges):
-    user_mgr.revoke_privileges(username, db, parse_priv_list(privileges))
+def revoke(user_mgr: UserManager, username, db, privileges, show_diff):
+    require_root(user_mgr)
+    priv_list = parse_priv_list(privileges)
+
+    if show_diff:
+        click.echo(f"Before:\n  {username}@% →")
+        print_privs(user_mgr, username, db)
+
+    user_mgr.revoke_privileges(username, db, priv_list)
     click.echo(f"Revoked {privileges} on {db} from {username}.")
+
+    if show_diff:
+        click.echo(f"After:\n  {username}@% →")
+        print_privs(user_mgr, username, db)
 
 @users.command("rename")
 @click.argument("old_username")
 @click.argument("new_username")
 @click.pass_obj
 def rename(user_mgr: UserManager, old_username, new_username):
+    require_root_or_self(user_mgr, old_username)
     user_mgr.change_username(old_username, new_username)
     click.echo(f"{old_username} renamed to {new_username}.")
 
@@ -123,6 +187,7 @@ def rename(user_mgr: UserManager, old_username, new_username):
 @click.password_option("--new-pass", prompt=True, confirmation_prompt=True)
 @click.pass_obj
 def passwd_cmd(user_mgr: UserManager, username, new_pass):
+    require_root_or_self(user_mgr, username)
     user_mgr.change_password(username, new_pass)
     click.echo("Password updated.")
 
@@ -140,6 +205,7 @@ def list_users(user_mgr: UserManager):
 @click.argument("username")
 @click.pass_obj
 def drop(user_mgr: UserManager, username):
+    require_root(user_mgr)
     if username.lower() == "root":
         click.echo("Cannot drop user 'root'. Operation aborted.")
         return
@@ -149,14 +215,7 @@ def drop(user_mgr: UserManager, username):
 @users.command("drop-all")
 @click.pass_obj
 def drop_all_users(user_mgr: UserManager):
-    """Delete all users defined on '%' (except system-reserved)."""
-    users = user_mgr.list_raw_users()
-    for u in users:
-        if u.lower() == "root":
-            click.echo("Skipping 'root' user.")
-            continue
-        user_mgr.drop_user(u)
-        click.echo(f"Dropped user {u}")
+    user_mgr.drop_all_users()
 
 @users.command("whoami")
 @click.pass_obj
@@ -167,13 +226,26 @@ def whoami(user_mgr: UserManager):
 @users.command("set-defaults")
 @click.argument("username")
 @click.option("--db", default=DEFAULT_DB, show_default=True)
+@click.option("--show-diff", is_flag=True, help="Display privilege changes")
 @click.pass_obj
-def set_defaults(user_mgr: UserManager, username, db):
+def set_defaults(user_mgr: UserManager, username, db, show_diff):
+    require_root(user_mgr)
+
     defaults = ["SELECT", "INSERT", "UPDATE", "DELETE"]
+
+    if show_diff:
+        click.echo(f"Before:\n  {username}@% →")
+        print_privs(user_mgr, username, db)
+
     user_mgr.grant_privileges(username, db, defaults)
+
+    if show_diff:
+        click.echo(f"After:\n  {username}@% →")
+        print_privs(user_mgr, username, db)
+
     click.echo(f"Granted default perms to {username} on {db}")
 
-# ========== DATABASE COMMANDS ==========
+# -------------------- DATABASE --------------------
 
 def _print_ok(msg: str) -> None:
     click.echo(f"[OK] {msg}")
@@ -184,25 +256,26 @@ def _print_ok(msg: str) -> None:
 @click.option("--database", default=DEFAULT_DB, show_default=True)
 @click.pass_obj
 def create_db(user_mgr: UserManager, sql_dir: str, database: str):
-    order: List[str] = [
-        "install.sql", "indexing.sql", "procedures.sql", "triggers.sql", "views.sql"
-    ]
+    require_root(user_mgr)
+    order = ["install.sql", "indexing.sql", "procedures.sql", "triggers.sql", "views.sql"]
     for i, fname in enumerate(order):
-        sql_file = Path(sql_dir) / fname
-        if i == 0:  # install.sql must run *before* DB exists
-            user_mgr.execute_sql_file(sql_file)
+        path = Path(sql_dir) / fname
+        if i == 0:
+            user_mgr.execute_sql_file(path)
         else:
-            user_mgr.execute_sql_file(sql_file, database=database)
+            user_mgr.execute_sql_file(path, database=database)
         _print_ok(fname)
     _print_ok("Database schema deployed")
 
 @cli.command("drop-db")
 @click.option("--database", default=DEFAULT_DB, show_default=True)
+@click.option("--yes", is_flag=True, help="Skip confirmation prompt")
 @click.pass_obj
-def drop_db(user_mgr: UserManager, database: str):
-    click.confirm(f"Drop entire schema `{database}`?", abort=True)
+def drop_db(user_mgr: UserManager, database: str, yes: bool):
+    if not yes:
+        click.confirm(f"Drop entire schema `{database}`?", abort=True)
     user_mgr._execute_sql(f"DROP DATABASE IF EXISTS `{database}`;")
-    _print_ok(f"Schema `{database}` dropped")
+    click.echo(f"[OK] Schema `{database}` dropped")
 
 @cli.command("load-db")
 @click.option("--faker", "faker_script", type=click.Path(exists=True),
@@ -212,6 +285,7 @@ def drop_db(user_mgr: UserManager, database: str):
 @click.option("--database", default=DEFAULT_DB, show_default=True)
 @click.pass_obj
 def load_db(user_mgr: UserManager, faker_script: str, sql_dir: str, database: str):
+    require_root(user_mgr)
     subprocess.check_call([sys.executable, faker_script])
     _print_ok("faker.py complete")
     user_mgr.execute_sql_file(Path(sql_dir) / "load.sql", database=database)
@@ -221,6 +295,7 @@ def load_db(user_mgr: UserManager, faker_script: str, sql_dir: str, database: st
 @click.option("--database", default=DEFAULT_DB, show_default=True)
 @click.pass_obj
 def erase(user_mgr: UserManager, database: str):
+    require_root(user_mgr)
     click.confirm(f"Are you sure you want to TRUNCATE all tables in `{database}`?", abort=True)
     user_mgr.truncate_tables(database)
     _print_ok("All data erased")
@@ -246,7 +321,7 @@ def reset(ctx):
     ctx.invoke(create_db)
     ctx.invoke(load_db)
 
-# ========== QUERY COMMANDS ==========
+# -------------------- QUERIES --------------------
 
 @cli.command("qX")
 @argument("qx", metavar="qX", type=str)
@@ -269,7 +344,6 @@ def qrange_cmd(user_mgr: UserManager, qrange: str, database: str):
     match = re.match(r"q(\d+)-to-q(\d+)", qrange)
     if not match:
         raise click.ClickException("Expected format: q1-to-q4")
-
     start, end = sorted((int(match[1]), int(match[2])))
     for q in range(start, end + 1):
         qid = f"Q{q:02}"
@@ -280,6 +354,7 @@ def qrange_cmd(user_mgr: UserManager, qrange: str, database: str):
             continue
         user_mgr.run_query_to_file(sql_path, out_path, database=database)
         _print_ok(f"{sql_path.name} → {out_path.name}")
+
 
 if __name__ == "__main__":
     cli()

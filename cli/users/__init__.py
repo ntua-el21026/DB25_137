@@ -1,1 +1,2 @@
-# Turns the users/ folder into a packageso that the import in db137.py works
+# This file marks the folder as a Python package.
+# Required for module resolution and for CLI installation via setuptools.

@@ -10,7 +10,7 @@ def ensure_trailing_newline(file_path):
             last_char = f.read(1)
             if last_char != b'\n':
                 f.write(b'\n')
-                print(f"✔️  Added final newline to: {file_path}")
+                print(f"Added final newline to: {file_path}")
     except OSError:
         print(f"Skipping binary or unreadable file: {file_path}")
     except Exception as e:
@@ -21,7 +21,7 @@ def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.abspath(os.path.join(script_dir, "..", ".."))
 
-    print(f"🔍 Scanning project from: {project_root}\n")
+    print(f"Scanning project from: {project_root}\n")
 
     for root, _, files in os.walk(project_root):
         for file in files:

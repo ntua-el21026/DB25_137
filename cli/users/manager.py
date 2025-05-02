@@ -37,8 +37,10 @@ import logging
 import re
 from pathlib import Path
 from typing import Iterable, List, Sequence
-
+import os
+import click
 import mysql.connector
+from mysql.connector import errorcode
 from mysql.connector.cursor_cext import CMySQLCursor
 
 __all__ = ["UserManager", "parse_priv_list"]
@@ -65,34 +67,118 @@ def parse_priv_list(raw: str | Iterable[str]) -> List[str]:
 # Core class – manages users, privileges, and database scripts
 # ---------------------------------------------------------------------------- #
 class UserManager:
-    def __init__(self, dsn: dict):
-        print("▶ LOADED manager.py from", __file__)
-        self._dsn = dsn
-        self._log = logging.getLogger(self.__class__.__name__)
+    def __init__(self, root_user, root_pass, host="127.0.0.1", port=3306):
+        self._user = root_user
+        self._pass = root_pass
+        self._log = logging.getLogger(__name__)
+        self._dsn = {
+            "user": self._user,
+            "password": self._pass,
+            "host": host,
+            "port": port,
+            "autocommit": True,
+            "unix_socket": None
+        }
 
     # ------------------------------------------------------------------------ #
     # 1. USER ACCOUNT MANAGEMENT
     # ------------------------------------------------------------------------ #
-    def register_user(self, username: str, password: str) -> None:
-        self._execute_sql(
-            "CREATE USER IF NOT EXISTS %(u)s@'%%' IDENTIFIED BY %(p)s;",
-            {"u": username, "p": password},
-        )
+    def register_user(self, username, password, default_db, privileges):
+        """Register a new user with specified privileges on a given database."""
+        if not self.is_root():
+            raise click.ClickException("Only root users can register new users.")
+
+        try:
+            with self._connect() as cnx, cnx.cursor() as cursor:
+                privs = ', '.join(privileges)
+
+                for host in ('%', 'localhost'):
+                    try:
+                        cursor.execute(
+                            f"CREATE USER `{username}`@'{host}' IDENTIFIED BY %s", (password,)
+                        )
+                    except mysql.connector.errors.DatabaseError as e:
+                        if e.errno == errorcode.ER_CANNOT_USER:  # 1396: user exists
+                            raise click.ClickException(f"User `{username}` already exists at host '{host}'.")
+                        else:
+                            raise
+
+                    cursor.execute(
+                        f"GRANT {privs} ON `{default_db}`.* TO `{username}`@'{host}'"
+                    )
+                    try:
+                        cursor.execute(
+                            f"GRANT USAGE ON *.* TO `{username}`@'{host}'"
+                        )
+                    except mysql.connector.Error as e:
+                        if e.errno != errorcode.ER_SPECIFIC_ACCESS_DENIED_ERROR:
+                            raise
+
+                cnx.commit()
+                click.echo(f"[OK] Registered `{username}` with privileges on `{default_db}` for % and localhost")
+
+        except mysql.connector.Error as err:
+            raise click.ClickException(f"[DB Error] {err}")
 
     def drop_user(self, username: str) -> None:
-        self._execute_sql("DROP USER IF EXISTS %(u)s@'%';", {"u": username})
+        dropped = False
+        for host in ('%', 'localhost'):
+            with self._connect() as cnx, cnx.cursor() as cur:
+                cur.execute(
+                    "SELECT COUNT(*) FROM mysql.user WHERE user=%s AND host=%s",
+                    (username, host)
+                )
+                if cur.fetchone()[0] > 0:
+                    cur.execute(f"DROP USER `{username}`@'{host}'")
+                    dropped = True
+
+        if not dropped:
+            click.echo(f"[WARN] User `{username}` not found on '%' or 'localhost'.")
+
+            
+    def drop_all_users(self) -> None:
+        if not self.is_root():
+            raise click.ClickException("Only root users can drop users.")
+
+        users = self.list_raw_users()
+        if not users:
+            click.echo("[INFO] No users found.")
+            return
+
+        for u in users:
+            if u.lower() == "root":
+                click.echo("Skipping 'root' user.")
+                continue
+            try:
+                self.drop_user(u)
+                click.echo(f"Dropped user {u}.")
+            except click.ClickException as e:
+                click.echo(f"[SKIP] {e}")
 
     def change_username(self, old: str, new: str) -> None:
-        self._execute_sql(
-            "RENAME USER %(old)s@'%%' TO %(new)s@'%%';",
-            {"old": old, "new": new}
-        )
+        if self.is_root():
+            self._execute_sql(
+                "RENAME USER %(old)s@'%' TO %(new)s@'%';",
+                {"old": old, "new": new}
+            )
+        else:
+            self._execute_sql(
+                "CALL sp_rename_self(%(new)s);",
+                {"new": new}
+            )
 
     def change_password(self, username: str, new_password: str) -> None:
-        self._execute_sql(
-            "ALTER USER %(u)s@'%%' IDENTIFIED BY %(p)s;",
-            {"u": username, "p": new_password},
-        )
+        current_user = self.connected_user().split("@")[0]
+        if current_user == username:
+            # Let user change their own password without needing CREATE USER
+            self._execute_sql("SET PASSWORD = %(p)s;", {"p": new_password})
+        else:
+            # Must be root to update other accounts; update both host variants
+            for host in ('%', 'localhost'):
+                self._execute_sql(
+                    f"ALTER USER %(u)s@'{host}' IDENTIFIED BY %(p)s;",
+                    {"u": username, "p": new_password}
+                )
 
     def list_users(self) -> list[str]:
         output = []
@@ -101,9 +187,10 @@ class UserManager:
             users = [row[0] for row in cur.fetchall()]
             for user in users:
                 cur.execute(f"SHOW GRANTS FOR `{user}`@'%'")
-                grants = [row[0] for row in cur.fetchall() if "GRANT USAGE ON" not in row[0]]
-                if grants:
-                    output.append(f"{user}\n  " + "\n  ".join(grants))
+                all_grants = [row[0] for row in cur.fetchall()]
+                non_usages = [g for g in all_grants if "GRANT USAGE ON" not in g]
+                if non_usages:
+                    output.append(f"{user}\n  " + "\n  ".join(all_grants))
         return output
 
     def list_raw_users(self) -> list[str]:
@@ -119,19 +206,78 @@ class UserManager:
     # ------------------------------------------------------------------------ #
     # 2. PRIVILEGE CONTROL
     # ------------------------------------------------------------------------ #
-    def grant_privileges(self, username: str, database: str, privileges: Sequence[str]) -> None:
-        priv_clause = ", ".join(privileges)
-        self._execute_sql(
-            f"GRANT {priv_clause} ON `{database}`.* TO %(u)s@'%%';",
-            {"u": username},
-        )
 
-    def revoke_privileges(self, username: str, database: str, privileges: Sequence[str]) -> None:
-        priv_clause = ", ".join(privileges)
-        self._execute_sql(
-            f"REVOKE {priv_clause} ON `{database}`.* FROM %(u)s@'%%';",
-            {"u": username},
-        )
+    # Administrative / global privileges that MUST be granted ON *.*
+    _GLOBAL_PRIVS = {
+        "ALTER USER", "CREATE USER", "DROP USER",
+        "CREATE ROLE", "DROP ROLE", "ROLE_ADMIN", "SYSTEM_USER",
+    }
+
+    def grant_privileges(
+        self,
+        username: str,
+        database: str,
+        privileges: Sequence[str],
+    ) -> None:
+        """
+        Grant schema-level and global privileges in one call.
+
+        * schema privileges → GRANT … ON  `database`.* TO  'user'@'%';
+        * global  privileges → GRANT … ON  *.*          TO  'user'@'%';
+        """
+        if not privileges:
+            raise ValueError("Privilege list must not be empty.")
+
+        # normalise                                     ▼ NEW
+        privs = [p.upper().strip() for p in privileges]
+
+        db_privs     = [p for p in privs if p not in self._GLOBAL_PRIVS]
+        global_privs = [p for p in privs if p in self._GLOBAL_PRIVS]
+
+        if db_privs:
+            self._execute_sql(
+                f"GRANT {', '.join(db_privs)} ON `{database}`.* TO %(u)s@'%';",
+                {"u": username},
+            )
+
+        if global_privs:
+            # global privileges must carry the ON *.* clause  ▼ NEW
+            self._execute_sql(
+                f"GRANT {', '.join(global_privs)} ON *.* TO %(u)s@'%';",
+                {"u": username},
+            )
+
+    def revoke_privileges(self, username, db, to_revoke):
+        """Revoke specific privileges from a user on a given database."""
+        with self._connect() as conn:
+            with conn.cursor() as cursor:
+                # 1. Get current privileges from INFORMATION_SCHEMA
+                cursor.execute("""
+                    SELECT privilege_type
+                    FROM information_schema.schema_privileges
+                    WHERE grantee = %s AND table_schema = %s
+                """, (f"'{username}'@'%'", db))
+                current = {row[0].upper() for row in cursor.fetchall()}
+
+                if not current:
+                    print(f"[WARN] No privileges found for user '{username}' on database '{db}'")
+                    return
+
+                # 2. Compute what remains after revocation
+                remaining = current - set(p.upper() for p in to_revoke)
+
+                # 3. Revoke all privileges on that DB
+                cursor.execute(f"REVOKE ALL PRIVILEGES ON `{db}`.* FROM `{username}`@'%'")
+
+                # 4. Re-grant only the remaining ones
+                if remaining:
+                    priv_str = ",".join(sorted(remaining))
+                    cursor.execute(f"GRANT {priv_str} ON `{db}`.* TO `{username}`@'%'")
+                    print(f"[OK] Re-granted: {priv_str}")
+                else:
+                    print(f"[OK] All privileges revoked from {username} on {db}")
+
+            conn.commit()
 
     # ------------------------------------------------------------------------ #
     # 3. SQL FILE EXECUTION / DATA MANAGEMENT
@@ -214,6 +360,11 @@ class UserManager:
                 )
 
     def truncate_tables(self, database: str) -> None:
+        """
+        Truncates all base tables in the schema.
+        WARNING: FOREIGN_KEY_CHECKS are disabled temporarily – do not use on production data!
+        Logs number of tables truncated.
+        """
         params = self._dsn.copy()
         params["database"] = database
         with mysql.connector.connect(**params) as cnx, cnx.cursor() as cur:
@@ -224,11 +375,24 @@ class UserManager:
                 cur.execute(f"TRUNCATE TABLE `{tbl}`;")
             cur.execute("SET FOREIGN_KEY_CHECKS = 1;")
             cnx.commit()
-            self._log.info("Truncated %d tables in %s", len(tables), database)
+            print(f"[INFO] Truncated {len(tables)} tables in `{database}`")  # Simple stdout logging
 
     def run_query_to_file(self, sql_path: str | Path, out_path: str | Path, *, database: str) -> None:
-        sql_path = Path(sql_path)
-        out_path = Path(out_path)
+        """
+        Run a single SQL query and export the results to a tab-separated text file.
+
+        - Only allows reading from files inside the designated queries directory.
+        - Prevents accidental path traversal or misuse.
+        - Writes header + rows if any, or '(no rows)' if result is empty.
+        """
+        sql_path = Path(sql_path).resolve()
+        out_path = Path(out_path).resolve()
+
+        # --- Security check: only allow queries from inside expected directory ---
+        queries_root = Path(os.getenv("QUERIES_DIR", "sql/queries")).resolve()
+        if not str(sql_path).startswith(str(queries_root)):
+            raise ValueError(f"Access denied: {sql_path} is outside allowed queries directory.")
+
         sql = sql_path.read_text(encoding="utf-8")
 
         params = self._dsn.copy()
@@ -260,8 +424,20 @@ class UserManager:
 
     @contextlib.contextmanager
     def _connect(self):
-        cnx = mysql.connector.connect(**self._dsn)
+        dsn = self._dsn.copy()
+        # Override host with environment variable (e.g., DB_HOST=127.0.0.1)
+        dsn["host"] = os.getenv("DB_HOST", "localhost")
+        cnx = mysql.connector.connect(**dsn)
         try:
             yield cnx
         finally:
             cnx.close()
+
+    def connected_user(self) -> str:
+        """Returns the connected username (e.g., 'root@localhost')"""
+        return self.whoami()
+
+    def is_root(self) -> bool:
+        """Checks if the connected user is root (host-insensitive)"""
+        user = self.connected_user()
+        return user.lower().startswith("root@")

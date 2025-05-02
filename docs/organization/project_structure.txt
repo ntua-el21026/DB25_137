@@ -40,6 +40,7 @@
 │       └── project_structure.txt
 ├── pyproject.toml
 ├── sql
+│   ├── README.md
 │   ├── indexing.sql
 │   ├── install.sql
 │   ├── load.sql
@@ -78,8 +79,12 @@
 │   ├── triggers.sql
 │   └── views.sql
 └── test
-    ├── test_cli.py
+    ├── README.md
+    ├── test.py
+    ├── test_cli.sh
     ├── test_load.py
-    └── test_load.sql
+    ├── test_load.sql
+    ├── test_q.sql
+    └── test_results.txt
 
-13 directories, 69 files
+13 directories, 74 files

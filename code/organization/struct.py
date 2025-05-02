@@ -49,9 +49,9 @@ def main():
         print(f"📁 Project structure saved to: {output_file}")
     
     except subprocess.CalledProcessError as e:
-        print("❌ Error running tree:", e)
+        print("Error running tree:", e)
     except FileNotFoundError:
-        print("❌ 'tree' command is not available. Install it with: sudo apt install tree")
+        print("'tree' command is not available. Install it with: sudo apt install tree")
 
     # Print mappings for intcheck.py
     print_expected_output_mappings()

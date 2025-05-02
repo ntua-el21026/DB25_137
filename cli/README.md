@@ -1,4 +1,7 @@
-# Installing and Using the `db137` CLI
+
+# Pulse University – DB137 CLI
+
+A command-line interface for administering the Pulse University Festival relational database system (2024–2025).
 
 ---
 
@@ -6,13 +9,16 @@
 
 - Python 3.8+
 - Packages:
-  ```bash
-  pip3 install --user click mysql-connector-python
-  ```
+
+```bash
+pip install --user click mysql-connector-python
+```
 
 ---
 
-## 2. Create file: pyproject.toml (must be in project root)
+## 2. Project Setup
+
+Create the file `pyproject.toml` in the **project root**:
 
 ```toml
 [build-system]
@@ -38,28 +44,28 @@ db137 = "cli.db137:cli"
 
 ---
 
-## 3. Install the CLI
+## 3. Installation
 
-From the project root:
+From the root directory:
 
 ```bash
-pip uninstall db137      # Optional, if reinstalling
+pip uninstall db137      # Optional: if reinstalling
 pip install --user -e .
 ```
 
-This creates the `db137` command in `~/.local/bin/`.
+This creates the `db137` command at `~/.local/bin/db137`.
 
 ---
 
-## 4. PATH Setup
+## 4. Shell Configuration
 
-Ensure your shell loads the CLI:
+Append this to your `.bashrc` or `.zshrc`:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-Then:
+Reload:
 
 ```bash
 source ~/.bashrc  # or ~/.zshrc
@@ -71,91 +77,97 @@ Check:
 which db137
 ```
 
-Should return something like:
-
-```
-/home/you/.local/bin/db137
-```
-
 ---
 
-## 5. Environment Variables (for DB access)
+## 5. Environment Variables
 
-### If using `direnv` (recommended)
-
-Create `.envrc` file in project root with the following contents:
+The CLI requires DB root credentials. Best practice is to define them in a `.envrc` file:
 
 ```bash
-export DB_ROOT_USER=$(echo -n 'root' | tr -d '\r')
-export DB_ROOT_PASS=$(echo -n 'yourpassword' | tr -d '\r')
+export DB_ROOT_USER=$(echo -n 'root' | tr -d '
+')
+export DB_ROOT_PASS=$(echo -n 'yourpassword' | tr -d '
+')
 export PYTHONPATH=$PWD
 ```
 
-Then:
+Then allow it:
 
 ```bash
 direnv allow
 ```
 
-This prevents Windows-style line endings (`\r`) from corrupting auth.
+---
 
-You can verify:
+## 6. Commands
 
 ```bash
-echo "$DB_ROOT_USER" | od -c
+db137 <command> ...
 ```
 
-Should **not** end in `\r`.
+### Users
+
+- `users register`
+- `users grant [--show-diff]`
+- `users revoke [--show-diff]`
+- `users rename`
+- `users passwd`
+- `users list`
+- `users drop`
+- `users drop-all`
+- `users whoami`
+- `users set-defaults [--show-diff]`
+
+Examples:
+
+```bash
+db137 users register alice --password pass
+db137 users grant alice --db pulse_university --privileges SELECT,INSERT
+db137 users revoke alice --db pulse_university --privileges SELECT --show-diff
+```
 
 ---
 
-## 6. Troubleshooting: Access Denied
+### Schema Setup
 
-If `db137` fails with:
-
-```
-Access denied for user 'root'@'localhost' (using password: YES)
-```
-
-### Check:
-1. You can run:
-   ```bash
-   mysql -u root -p
-   ```
-   and login with your password.
-
-2. `.envrc` uses `echo -n 'value' | tr -d '\r'`  
-   (see step 6 above — `\r` will silently break your login)
-
-3. Print debug:
-   Add inside `manager.py → _connect()`:
-   ```python
-   print("Connecting with DSN:", self._dsn)
-   ```
-
-You should see clean credentials without `\r`.
+- `create-db` – Run install.sql, indexing, procedures, triggers, views
+- `load-db` – Run faker.py + load.sql
+- `reset` – Shortcut: create-db + load-db
+- `erase` – Truncate all tables (preserves schema)
+- `drop-db` – Delete schema
+- `status` – Show table row counts
 
 ---
 
-## 7. Cleanup
+### Query Execution
 
-Remove stale Python caches:
+- `qX` – Run QX.sql → QX_out.txt
+- `qX-to-qY` – Run a range of Q files (e.g. q1-to-q5)
+
+---
+
+## 7. Manual Testing
+
+To run CLI tests manually:
+
+```bash
+bash test/test_cli.sh
+```
+
+Results go to `test/test_cli_results.txt`.
+
+---
+
+## 8. Cleanup
 
 ```bash
 find . -type d -name '__pycache__' -exec rm -r {} +
+rm -rf db137.egg-info/
 ```
-
-Remove the outdated `cli/db137.egg-info/` if it still exists:
-
-```bash
-rm -rf cli/db137.egg-info/
-```
-
-Only the one at the root should remain.
 
 ---
 
-## 8. Command Reference
+## 9. Command Reference
 
 Each of the following commands can be run with:
 
@@ -163,107 +175,104 @@ Each of the following commands can be run with:
 db137 <command>
 ```
 
+---
+
 ### USERS
-- `users register` – Create a new user and grant privileges
+
+- `users register` – Create a new user and grant privileges:
   ```bash
-  db137 users register alice --password secret
+  db137 users register alice --password secret --default-db pulse_university --privileges SELECT,INSERT
   ```
 
-- `users grant` – Grant privileges on a schema
+- `users grant` – Grant privileges on a schema (with optional diff view):
   ```bash
-  db137 users grant alice --db pulse_university --privileges SELECT,INSERT
+  db137 users grant alice --db pulse_university --privileges SELECT,INSERT --show-diff
   ```
 
-- `users revoke` – Revoke privileges from a user
+- `users revoke` – Revoke privileges from a user (with optional diff view):
   ```bash
-  db137 users revoke alice --db pulse_university --privileges SELECT
+  db137 users revoke alice --db pulse_university --privileges SELECT --show-diff
   ```
 
-- `users rename` – Rename a user
+- `users rename` – Rename a user:
   ```bash
   db137 users rename alice alicia
   ```
 
-- `users passwd` – Change a user’s password
+- `users passwd` – Change a user's password:
   ```bash
   db137 users passwd alice
   ```
 
-- `users list` – List users and their real privileges
+- `users list` – List users and their privileges:
   ```bash
   db137 users list
   ```
 
-- `users drop` – Drop a single user
+- `users drop` – Drop a user:
   ```bash
   db137 users drop alice
   ```
 
-- `users drop-all` – Drop all users (on `%`)
+- `users drop-all` – Drop all users on host `%`:
   ```bash
   db137 users drop-all
   ```
 
-- `users whoami` – Show current MySQL connection identity
+- `users whoami` – Show current connection identity:
   ```bash
   db137 users whoami
   ```
 
-- `users set-defaults` – Grant SELECT, INSERT, UPDATE, DELETE
+- `users set-defaults` – Grant standard CRUD privileges (with optional diff view):
   ```bash
-  db137 users set-defaults alice --db pulse_university
+  db137 users set-defaults alice --show-diff
   ```
 
+---
+
 ### DATABASE SETUP
-- `create-db` – Run all schema and object SQLs
+
+- `create-db` – Deploy schema, indexing, views, triggers:
   ```bash
   db137 create-db
   ```
 
-- `load-db` – Generate and load data
+- `load-db` – Run `faker.py` and import data:
   ```bash
   db137 load-db
   ```
 
-- `reset` – Run both create-db and load-db
+- `reset` – Full setup (create + load):
   ```bash
   db137 reset
   ```
 
-- `erase` – Truncate all data in all base tables
+- `erase` – Truncate all base tables (data only):
   ```bash
   db137 erase
   ```
 
-- `drop-db` – Fully drop the schema
+- `drop-db` – Delete the database schema:
   ```bash
   db137 drop-db
   ```
 
-- `status` – Show row count per table
+- `status` – Print row counts for all base tables:
   ```bash
   db137 status
   ```
 
-### TESTING
-
-- `test-cli` – Run test_cli.py only
-  ```bash
-  db137 test-cli
-  ```
-
-- `test-load` – Run test_load.py and test_load.sql
-  ```bash
-  db137 test-load
-  ```
+---
 
 ### QUERIES
-- `qX` – Run single query (QX.sql → QX_out.txt)
+
+- `qX` – Run one query (e.g., Q01.sql → Q01_out.txt):
   ```bash
   db137 q1
   ```
 
-- `qX-to-qY` – Run range of queries
+- `qX-to-qY` – Run a query batch:
   ```bash
   db137 q1-to-q5
   ```
