@@ -3,7 +3,7 @@ DB137=python3 test/../cli/db137.py
 /usr/bin/bash
 
 ========== USER COMMANDS TEST ==========
-Working dir: /mnt/c/Users/peppa/OneDrive/peppasmich/Academics/Σ.Η.Μ.Μ.Υ.  Ε.Μ.Π/Μαθήματα - Εξάμηνα/Μεγαλύτερα Εξάμηνα - Ροές/Ροή Λ/Βάσεις Δεδομένων/2025/Εργασία/DB25_137
+Working dir: /mnt/c/Projects/DB25_137
 Database: pulse_university
 Output: test/test_cli_results.txt
 ========================================

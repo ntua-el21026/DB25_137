@@ -1,6 +1,5 @@
 .
 ├── .envrc
-├── .gitignore
 ├── LICENSE
 ├── README.md
 ├── cli
@@ -21,13 +20,6 @@
 │   ├── organization
 │   │   └── struct.py
 │   └── runall.py
-├── db137.egg-info
-│   ├── PKG-INFO
-│   ├── SOURCES.txt
-│   ├── dependency_links.txt
-│   ├── entry_points.txt
-│   ├── requires.txt
-│   └── top_level.txt
 ├── diagrams
 │   ├── README.md
 │   ├── er.pdf
@@ -38,7 +30,24 @@
 │       ├── cardinality_constraints.txt
 │       ├── datalist.txt
 │       └── project_structure.txt
-├── pyproject.toml
+├── frontend
+│   ├── README.md
+│   ├── index.html
+│   ├── package.json
+│   ├── postcss.config.js
+│   ├── public
+│   │   └── logo.jpg
+│   ├── src
+│   │   ├── App.jsx
+│   │   ├── api
+│   │   ├── auth
+│   │   ├── hooks
+│   │   ├── index.css
+│   │   ├── main.jsx
+│   │   ├── pages
+│   │   └── tabs
+│   ├── tailwind.config.js
+│   └── vite.config.js
 ├── sql
 │   ├── README.md
 │   ├── indexing.sql
@@ -82,9 +91,7 @@
     ├── README.md
     ├── test.py
     ├── test_cli.sh
-    ├── test_load.py
-    ├── test_load.sql
-    ├── test_q.sql
-    └── test_results.txt
+    ├── test_cli_results.txt
+    └── test_q.sql
 
-13 directories, 74 files
+20 directories, 74 files

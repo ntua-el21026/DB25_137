@@ -137,23 +137,33 @@ class UserManager:
 
             
     def drop_all_users(self) -> None:
+        """Drop all non-system users (excluding 'root' and MySQL internal accounts) on all hosts."""
         if not self.is_root():
             raise click.ClickException("Only root users can drop users.")
 
-        users = self.list_raw_users()
-        if not users:
-            click.echo("[INFO] No users found.")
-            return
+        with self._connect() as cnx, cnx.cursor() as cur:
+            # Exclude MySQL internal/system users
+            cur.execute("""
+                SELECT DISTINCT user, host
+                FROM mysql.user
+                WHERE user NOT IN (
+                    'root', 'mysql.sys', 'mysql.session', 'mysql.infoschema', 'debian-sys-maint'
+                )
+            """)
+            accounts = cur.fetchall()
 
-        for u in users:
-            if u.lower() == "root":
-                click.echo("Skipping 'root' user.")
-                continue
-            try:
-                self.drop_user(u)
-                click.echo(f"Dropped user {u}.")
-            except click.ClickException as e:
-                click.echo(f"[SKIP] {e}")
+            if not accounts:
+                click.echo("[INFO] No non-system users found.")
+                return
+
+            for user, host in accounts:
+                try:
+                    cur.execute(f"DROP USER `{user}`@'{host}'")
+                    click.echo(f"Dropped user {user}@{host}")
+                except mysql.connector.Error as e:
+                    click.echo(f"[SKIP] Could not drop {user}@{host}: {e}")
+
+            cnx.commit()
 
     def change_username(self, old: str, new: str) -> None:
         if self.is_root():
@@ -183,14 +193,17 @@ class UserManager:
     def list_users(self) -> list[str]:
         output = []
         with self._connect() as cnx, cnx.cursor() as cur:
-            cur.execute("SELECT user FROM mysql.user WHERE host = '%';")
-            users = [row[0] for row in cur.fetchall()]
-            for user in users:
-                cur.execute(f"SHOW GRANTS FOR `{user}`@'%'")
-                all_grants = [row[0] for row in cur.fetchall()]
-                non_usages = [g for g in all_grants if "GRANT USAGE ON" not in g]
-                if non_usages:
-                    output.append(f"{user}\n  " + "\n  ".join(all_grants))
+            # Select all users and their hosts
+            cur.execute("SELECT user, host FROM mysql.user WHERE user NOT IN ('mysql.infoschema', 'mysql.session', 'mysql.sys')")
+            users = cur.fetchall()
+
+            for user, host in users:
+                try:
+                    cur.execute(f"SHOW GRANTS FOR `{user}`@'{host}'")
+                    grants = [row[0] for row in cur.fetchall()]
+                    output.append(f"{user}@{host}\n  " + "\n  ".join(grants))
+                except mysql.connector.Error as e:
+                    output.append(f"{user}@{host}\n  [ERROR fetching grants: {e}]")
         return output
 
     def list_raw_users(self) -> list[str]:

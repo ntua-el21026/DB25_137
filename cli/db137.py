@@ -124,7 +124,6 @@ def users():
 @click.option("--privileges", default="FULL", show_default=True)
 @click.pass_obj
 def register(user_mgr: UserManager, username, password, default_db, privileges):
-    """Create a user with schema privileges and optional login access."""
     require_root(user_mgr)
     parsed_privs = parse_priv_list(privileges)
     user_mgr.register_user(username, password, default_db, parsed_privs)

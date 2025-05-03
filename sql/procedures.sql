@@ -99,7 +99,7 @@ END;
 DELIMITER ;
 
 -- ===========================================================
--- Procedure 7: Rename the currently connected user (self)
+-- Procedure 6: Rename the currently connected user (self)
 -- ===========================================================
 DELIMITER //
 

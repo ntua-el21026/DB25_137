@@ -4,6 +4,14 @@
 # Ignore settings.json anywhere
 **/settings.json
 
+# Ignore frontend env files and modules
+package-lock.json
+# package.json
+# tailwind.config.js
+# vite.config.js
+# postcss.config.js
+node_modules/
+
 # Ignore virtual environment
 venv/
 .venv/

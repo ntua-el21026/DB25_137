@@ -1,4 +1,3 @@
-
 # Pulse University – DB137 CLI
 
 A command-line interface for administering the Pulse University Festival database system (2024–2025).
@@ -97,46 +96,57 @@ direnv allow
 
 ---
 
-## 6. Commands
+## 6. Troubleshooting
+
+### MySQL connection fails (`Can't connect to MySQL server`)
+
+Make sure your MySQL server is **running**.
+
+Check status:
 
 ```bash
-db137 <command> ...
+sudo service mysql status
 ```
 
-### Users
+If it's not running, start it:
 
-- `users register`
-- `users grant [--show-diff]`
-- `users revoke [--show-diff]`
-- `users rename`
-- `users passwd`
-- `users list`
-- `users drop`
-- `users drop-all`
-- `users whoami`
-- `users set-defaults [--show-diff]`
+```bash
+sudo service mysql start
+```
 
----
+### `DB_ROOT_USER` or `DB_ROOT_PASS` is blank
 
-### Schema Setup
+This usually means `.envrc` wasn't loaded.
 
-- `create-db` – Run install.sql, indexing, procedures, triggers, views
-- `load-db` – Run faker.py + load.sql
-- `reset` – Shortcut: create-db + load-db
-- `erase` – Truncate all tables (preserves schema)
-- `drop-db` – Delete schema
-- `status` – Show table row counts
+Fix:
 
----
+```bash
+direnv allow
+echo $DB_ROOT_USER  # should return 'root'
+```
 
-### Query Execution
+### `db137` not found
 
-- `qX` – Run QX.sql → QX_out.txt
-- `qX-to-qY` – Run a range of Q files (e.g. q1-to-q5)
+Ensure `~/.local/bin` is in your PATH. Add this to your shell profile:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+Reload your shell (`source ~/.bashrc`), then check with `which db137`.
 
 ---
 
-## 7. Manual Testing
+## 7. Cleanup
+
+```bash
+find . -type d -name '__pycache__' -exec rm -r {} +
+rm -rf db137.egg-info/
+```
+
+---
+
+## 8. Manual Testing
 
 To run CLI tests manually:
 
@@ -145,15 +155,6 @@ bash test/test_cli.sh
 ```
 
 Results go to `test/test_cli_results.txt`.
-
----
-
-## 8. Cleanup
-
-```bash
-find . -type d -name '__pycache__' -exec rm -r {} +
-rm -rf db137.egg-info/
-```
 
 ---
 
@@ -266,5 +267,3 @@ db137 <command>
   ```bash
   db137 q1-to-q5
   ```
-
----
