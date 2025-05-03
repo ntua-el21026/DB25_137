@@ -1,6 +1,6 @@
 # Pulse Festival Frontend – Setup & Troubleshooting Guide
 
-This guide explains how to set up the frontend for the Pulse University Festival project, using React, Vite, Tailwind CSS, and Axios inside WSL, along with a Python backend powered by Flask.
+This guide explains how to set up the frontend for the Pulse University Festival project, using React, Vite, Tailwind CSS, and Axios inside WSL, along with a Python backend powered by Flask **(requires Python 3.10 or newer)**.
 
 ---
 
@@ -15,7 +15,7 @@ This guide explains how to set up the frontend for the Pulse University Festival
    nvm use --lts
    ```
 
-2. **Navigate to your project folder in frontend**:
+2. **Navigate to your project folder in frontend**
 
 3. **Install frontend dependencies**:
 
@@ -23,19 +23,19 @@ This guide explains how to set up the frontend for the Pulse University Festival
    npm install
    ```
 
-4. **Install Vite React plugin** (only once):
+4. **Install Vite React plugin**:
 
    ```bash
    npm install --save-dev @vitejs/plugin-react
    ```
 
-5. **Install frontend extras** (only once):
+5. **Install frontend extras**:
 
    ```bash
    npm install @uiw/react-codemirror @codemirror/lang-sql
    ```
 
-6. **Install Flask backend dependencies** (only once):
+6. **Install Flask backend dependencies**:
 
    ```bash
    pip install flask flask-cors mysql-connector-python
@@ -63,92 +63,13 @@ This guide explains how to set up the frontend for the Pulse University Festival
 
 ---
 
-## 3. Key Files Explained
+## 3. Running the Frontend/Backend
 
-### `package.json`
-
-Defines your project and its dependencies:
-
-```json
-{
-    "name": "pulse-frontend",
-    "version": "1.0.0",
-    "private": true,
-    "scripts": {
-        "dev": "vite",
-        "build": "vite build",
-        "preview": "vite preview"
-    },
-    "dependencies": {
-        "axios": "^1.6.8",
-        "react": "^18.2.0",
-        "react-dom": "^18.2.0",
-        "react-router-dom": "^6.22.3",
-        "@uiw/react-codemirror": "^5.22.11",
-        "@codemirror/lang-sql": "^6.1.4"
-    },
-    "devDependencies": {
-        "@vitejs/plugin-react": "^4.2.1",
-        "autoprefixer": "^10.4.17",
-        "postcss": "^8.4.38",
-        "tailwindcss": "^3.4.1",
-        "vite": "^5.0.11"
-    }
-}
-```
-
-`package-lock.json` is automatically generated the **first time you run \`npm install\`**.
-It locks exact dependency versions to ensure consistent installs across systems.
-You should commit it to version control, but **you never need to edit it manually.**
-
----
-
-### `vite.config.js`
-
-```js
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-
-export default defineConfig({
-    plugins: [react()],
-    server: { port: 3000 }
-});
-```
-
----
-
-### `tailwind.config.js`
-
-```js
-module.exports = {
-    content: ["./index.html", "./src/**/*.{js,jsx,ts,tsx}"],
-    theme: { extend: {} },
-    plugins: []
-};
-```
-
----
-
-### `postcss.config.js`
-
-```js
-module.exports = {
-    plugins: {
-        tailwindcss: {},
-        autoprefixer: {}
-    }
-};
-```
-
----
-
-## 4. Running the Frontend/Backend
-
-Once installed and both servers are running:
+Once installed and both servers are running, each one in a different terminal:
 
 ```bash
-npm run dev              # Frontend
-python3 frontend/api/serve.py  # Backend
+npm run dev              # Frontend, from inside the frontend folder
+python3 frontend/src/api/serve.py  # Backend, from the project root
 ```
 
 Then open your browser to:
@@ -156,7 +77,7 @@ Then open your browser to:
 
 ---
 
-## 5. What You Can Do in the Web Interface
+## 4. What You Can Do in the Web Interface
 
 - **Login & Logout**: Secure entry with role-based backend CLI access
 - **View Schema**: Browse tables, views, procedures, and triggers; inspect definitions
