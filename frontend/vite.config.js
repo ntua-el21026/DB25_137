@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
 	server: {
-		port: 3000,
+		port: 4000,
 		historyApiFallback: true
 	},
 	optimizeDeps: {

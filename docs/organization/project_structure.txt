@@ -41,6 +41,7 @@
 │   │   ├── App.jsx
 │   │   ├── api
 │   │   ├── auth
+│   │   ├── components
 │   │   ├── hooks
 │   │   ├── index.css
 │   │   ├── main.jsx
@@ -94,4 +95,4 @@
     ├── test_cli_results.txt
     └── test_q.sql
 
-20 directories, 74 files
+21 directories, 74 files

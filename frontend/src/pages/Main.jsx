@@ -4,18 +4,18 @@ import SchemaTab from "../tabs/SchemaTab";
 import BrowseTab from "../tabs/BrowseTab";
 import QueryTab from "../tabs/QueryTab";
 import CliTab from "../tabs/CliTab";
-import SessionTimer from "../components/SessionTimer"; // NEW
+import SessionTimer from "../components/SessionTimer";
 
 const tabs = ["Schema Overview", "Browse Schema", "Run Query", "Run Cli"];
 
 export default function Main() {
 	const [activeTab, setActiveTab] = useState("Schema Overview");
+	const [cliHistory, setCliHistory] = useState([]);
 	const navigate = useNavigate();
 
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 text-gray-800">
 			<header className="sticky top-0 bg-white shadow z-10 relative">
-				{/* logout button */}
 				<button
 					onClick={() => navigate("/logout")}
 					className="absolute top-4 right-6 flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
@@ -55,13 +55,15 @@ export default function Main() {
 				</nav>
 			</header>
 
-			<SessionTimer /> {/* NEW session timeout component */}
+			<SessionTimer />
 
 			<main className="max-w-6xl mx-auto px-6 py-8">
 				{activeTab === "Schema Overview" && <SchemaTab />}
 				{activeTab === "Browse Schema" && <BrowseTab />}
 				{activeTab === "Run Query" && <QueryTab />}
-				{activeTab === "Run Cli" && <CliTab />}
+				{activeTab === "Run Cli" && (
+					<CliTab history={cliHistory} setHistory={setCliHistory} />
+				)}
 			</main>
 		</div>
 	);

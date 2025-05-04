@@ -452,5 +452,5 @@ class UserManager:
 
     def is_root(self) -> bool:
         """Checks if the connected user is root (host-insensitive)"""
-        user = self.connected_user()
-        return user.lower().startswith("root@")
+        user = self.connected_user().lower()
+        return user.startswith("root@") or user == "root@localhost"

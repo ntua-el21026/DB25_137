@@ -292,12 +292,14 @@ def load_db(user_mgr: UserManager, faker_script: str, sql_dir: str, database: st
 
 @cli.command("erase")
 @click.option("--database", default=DEFAULT_DB, show_default=True)
+@click.option("--yes", is_flag=True, help="Skip confirmation prompt")
 @click.pass_obj
-def erase(user_mgr: UserManager, database: str):
+def erase(user_mgr: UserManager, database: str, yes: bool):
     require_root(user_mgr)
-    click.confirm(f"Are you sure you want to TRUNCATE all tables in `{database}`?", abort=True)
+    if not yes:
+        click.confirm(f"Are you sure you want to TRUNCATE all tables in `{database}`?", abort=True)
     user_mgr.truncate_tables(database)
-    _print_ok("All data erased")
+    click.echo("[OK] All data erased.")
 
 @cli.command("status")
 @click.option("--database", default=DEFAULT_DB, show_default=True)

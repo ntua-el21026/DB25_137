@@ -3,7 +3,10 @@ import { API_BASE, authHeaders, safeFetch } from "../api/client";
 
 export default function CliTab() {
 	const [command, setCommand] = useState("");
-	const [history, setHistory] = useState([]);
+	const [history, setHistory] = useState(() => {
+		const saved = sessionStorage.getItem("cliHistory");
+		return saved ? JSON.parse(saved) : [];
+	});
 	const [available, setAvailable] = useState([]);
 	const inputRef = useRef();
 
@@ -17,9 +20,28 @@ export default function CliTab() {
 			.catch(() => {});
 	}, []);
 
+	useEffect(() => {
+		sessionStorage.setItem("cliHistory", JSON.stringify(history));
+	}, [history]);
+
 	const handleRun = async () => {
-		const trimmed = command.trim();
+		let trimmed = command.trim();
 		if (!trimmed) return;
+
+		// Confirmation for destructive commands
+		const dangerous = [
+			"db137 drop-db",
+			"db137 erase",
+			"drop-db",
+			"erase"
+		];
+
+		const base = trimmed.replace(/\s+--yes$/, "").trim();
+		if (dangerous.includes(base)) {
+			const ok = window.confirm(`Are you sure you want to run: ${base}?`);
+			if (!ok) return;
+			if (!trimmed.includes("--yes")) trimmed += " --yes";
+		}
 
 		setCommand("");
 
@@ -33,16 +55,13 @@ export default function CliTab() {
 				body: JSON.stringify({ command: trimmed })
 			});
 			const text = await res.text();
-			const success = res.ok;
-
-			const denied = /access denied|privilege/i.test(text);
 
 			setHistory(prev => [
 				...prev,
 				{
 					command: trimmed,
-					output: denied ? "You do not have permission to run this command." : text.trim(),
-					success: !denied && success,
+					output: text.trim(),
+					success: res.ok,
 					expanded: true
 				}
 			]);
@@ -69,6 +88,7 @@ export default function CliTab() {
 	const handleClear = () => {
 		setHistory([]);
 		setCommand("");
+		sessionStorage.removeItem("cliHistory");
 		inputRef.current?.focus();
 	};
 

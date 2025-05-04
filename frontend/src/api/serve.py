@@ -5,7 +5,7 @@ import os
 import sys
 from pathlib import Path
 import subprocess
-from click.testing import CliRunner  # ✅ fixed here
+from click.testing import CliRunner
 import click
 
 # CLI path for db137 import
@@ -171,8 +171,15 @@ def run_cli_command():
 		if cmd_parts and cmd_parts[0] == "db137":
 			cmd_parts = cmd_parts[1:]
 
+		# Get credentials from frontend token
+		token = request.headers.get("Authorization", "")
+		username, password = token.split(":", 1)
+
 		runner = CliRunner()
-		result = runner.invoke(cli, cmd_parts)
+		result = runner.invoke(cli, cmd_parts, env={
+			"DB_ROOT_USER": username,
+			"DB_ROOT_PASS": password
+		})
 
 		return Response(result.output, status=200 if result.exit_code == 0 else 400)
 	except Exception as e:
