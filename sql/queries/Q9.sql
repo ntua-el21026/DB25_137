@@ -22,5 +22,10 @@ JOIN MatchingCounts mc ON  fc.festival_year   = mc.festival_year
 JOIN Attendee       a  ON  fc.attendee_id     = a.attendee_id
 ORDER BY fc.festival_year, fc.events_attended DESC;
 
--- Index used
--- idx_ticket_event_date_payment: Ticket(event_id, purchase_date, method_id)
+-- Index used (via the View)
+-- idx_ticket_event_date_payment on Ticket(event_id, purchase_date, method_id)
+-- idx_ticket_attendee_event on Ticket(attendee_id, event_id)
+-- idx_ticket_attendee_year_event on Ticket(attendee_id, purchase_date, event_id)
+
+-- View used
+-- View_Attendee_Yearly_Visits

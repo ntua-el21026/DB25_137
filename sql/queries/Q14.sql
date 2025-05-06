@@ -26,8 +26,12 @@ SELECT
 FROM ConsecutiveMatch
 ORDER BY genre_name, year1;
 
--- Indexes used (through View_Genre_Year_Counts)
--- idx_perf_type: Performance(type_id)
--- idx_perf_artist: Performance_Artist(artist_id, perf_id)
--- idx_event_year: Event(fest_year)
--- idx_artist_genre: Artist_Genre(genre_id)
+-- Indexes used (through View_Genre_Year_Counts):
+-- idx_perf_type on Performance(type_id)
+-- idx_perf_artist on Performance_Artist(artist_id, perf_id)
+-- idx_event_year on Event(fest_year)
+-- idx_artist_genre on Artist_Genre(genre_id)
+-- idx_perf_datetime on Performance(datetime)
+
+-- View used:
+-- View_Genre_Year_Counts

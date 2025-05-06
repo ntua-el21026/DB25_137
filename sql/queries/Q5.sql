@@ -7,8 +7,8 @@ WITH ArtistCounts AS (
         TIMESTAMPDIFF(YEAR, a.date_of_birth, CURDATE()) AS age,
         COUNT(pa.perf_id) AS performance_count
     FROM Artist a
-    JOIN Performance_Artist pa ON a.artist_id = pa.artist_id    -- idx_perf_artist
-    WHERE TIMESTAMPDIFF(YEAR, a.date_of_birth, CURDATE()) < 30  -- idx_artist_dob
+    JOIN Performance_Artist pa ON a.artist_id = pa.artist_id
+    WHERE TIMESTAMPDIFF(YEAR, a.date_of_birth, CURDATE()) < 30
     GROUP BY a.artist_id, artist_name
 ),
 MaxCount AS (
