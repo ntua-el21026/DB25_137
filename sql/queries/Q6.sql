@@ -3,9 +3,6 @@ SELECT event_id, event_title, avg_event_rating
 FROM View_Attendee_Event_Rating
 WHERE attendee_id = 1;
 
--- View used:
--- View_Attendee_Event_Rating
-
 -- Analysis for simple query
 EXPLAIN FORMAT=JSON
 SELECT event_id, event_title, avg_event_rating

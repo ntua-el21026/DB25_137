@@ -64,13 +64,15 @@ CREATE INDEX idx_staff_role_staff    ON Staff    (role_id,  staff_id);   -- role
 CREATE INDEX idx_staff_experience    ON Staff    (experience_id);
 
 /* -----------------------------------------------------------
- * 7.  Reviews   (Q 11, 15)
+ * 7.  Reviews   (Q 6, 11, 15)
  * -----------------------------------------------------------*/
-DROP INDEX IF EXISTS idx_review_perf_io          ON Review;
-DROP INDEX IF EXISTS idx_review_attendee_overall ON Review;
+DROP INDEX IF EXISTS idx_review_perf_io                ON Review;
+DROP INDEX IF EXISTS idx_review_attendee_overall       ON Review;
+DROP INDEX IF EXISTS idx_review_perf_attendee_overall  ON Review
 
-CREATE INDEX idx_review_perf_io          ON Review (perf_id, interpretation, overall); -- covering index
-CREATE INDEX idx_review_attendee_overall ON Review (attendee_id, overall); -- possibly for 4, 6
+CREATE INDEX idx_review_perf_io                ON Review (perf_id, interpretation, overall); -- covering index
+CREATE INDEX idx_review_attendee_overall       ON Review (attendee_id, overall);
+CREATE INDEX idx_review_perf_attendee_overall  ON Review(perf_id, attendee_id, overall);
 
 /* -----------------------------------------------------------
  * 8.  Geography   (Q 13)

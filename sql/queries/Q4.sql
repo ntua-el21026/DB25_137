@@ -3,9 +3,6 @@ SELECT artist_id, artist_name, avg_interpretation, avg_overall
 FROM View_Artist_Performance_Rating
 WHERE artist_id = 1;
 
--- View used:
--- View_Artist_Performance_Rating
-
 -- Analysis for simple query
 EXPLAIN FORMAT=JSON
 SELECT artist_id, artist_name, avg_interpretation, avg_overall
