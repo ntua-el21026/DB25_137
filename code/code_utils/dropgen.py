@@ -5,71 +5,98 @@ def extract_table_names(sql_text):
     pattern = re.compile(r"CREATE\s+TABLE\s+(IF\s+NOT\s+EXISTS\s+)?[`\"]?(\w+)[`\"]?", re.IGNORECASE)
     return [match.group(2) for match in pattern.finditer(sql_text)]
 
-def main():
-    # Paths
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.abspath(os.path.join(script_dir, "..", ".."))
-    install_path = os.path.join(project_root, "sql", "install.sql")
+def extract_view_names(sql_text):
+    pattern = re.compile(r"CREATE\s+VIEW\s+[`\"]?(\w+)[`\"]?", re.IGNORECASE)
+    return [match.group(1) for match in pattern.finditer(sql_text)]
 
-    # Load file
-    with open(install_path, "r", encoding="utf-8") as f:
-        lines = f.readlines()
-        full_text = "".join(lines)
-
-    # Find 'USE pulse_university;'
+def replace_drop_block(lines, anchor_keyword, drop_prefix, object_names, comment_line):
     try:
-        use_index = next(i for i, line in enumerate(lines) if "USE pulse_university;" in line)
+        anchor_index = next(i for i, line in enumerate(lines) if anchor_keyword in line)
     except StopIteration:
-        print("Could not find 'USE pulse_university;' in install.sql.")
-        return
+        print(f"Could not find anchor line '{anchor_keyword}'.")
+        return lines
 
-    # Remove all blank lines after USE
-    while use_index + 1 < len(lines) and lines[use_index + 1].strip() == "":
-        del lines[use_index + 1]
+    # Remove blank lines after anchor
+    while anchor_index + 1 < len(lines) and lines[anchor_index + 1].strip() == "":
+        del lines[anchor_index + 1]
 
-    # Find existing drop block (if any)
+    # Remove existing drop block
     drop_start = None
-    for i in range(use_index + 1, len(lines)):
-        if lines[i].strip().startswith("-- Drop all tables"):
+    for i in range(anchor_index + 1, len(lines)):
+        if lines[i].strip().startswith(comment_line):
             drop_start = i
             break
 
     if drop_start is not None:
         drop_end = drop_start
         for j in range(drop_start + 1, len(lines)):
-            if not lines[j].strip().startswith("DROP TABLE IF EXISTS"):
+            if not lines[j].strip().startswith(drop_prefix):
                 break
             drop_end = j
-        # Remove drop block and blank lines after it
         del lines[drop_start:drop_end + 1]
-        # Clean up extra blank lines after the drop block
         while drop_start < len(lines) and lines[drop_start].strip() == "":
             del lines[drop_start]
 
-    # Extract all table names from CREATE TABLE
-    table_names = extract_table_names(full_text)
-
-    # Construct drop block with 1 blank line before and 1 after
+    # Build new block
     drop_block = [
         "\n",
-        "-- Drop all tables\n",
-        *[f"DROP TABLE IF EXISTS {t};\n" for t in table_names],
-        "\n"  # Exactly one blank line after the last DROP
+        f"{comment_line}\n",
+        *[f"{drop_prefix} {name};\n" for name in object_names],
+        "\n"
     ]
 
-    # Insert block after 'USE pulse_university;'
-    insert_index = use_index + 1
-    lines = lines[:insert_index] + drop_block + lines[insert_index:]
+    insert_index = anchor_index + 1
+    return lines[:insert_index] + drop_block + lines[insert_index:]
 
-    # Trim trailing blank lines at end of file
-    while lines and lines[-1].strip() == "":
-        lines.pop()
+def update_sql_file(file_path, extract_names_fn, drop_prefix, comment_line):
+    with open(file_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+        full_text = "".join(lines)
 
-    # Write updated file
-    with open(install_path, "w", encoding="utf-8") as f:
-        f.writelines(lines)
+    object_names = extract_names_fn(full_text)
 
-    print(f"Drop block with {len(table_names)} tables inserted cleanly after 'USE pulse_university;', with 1 blank line before and after.")
+    # Choose anchor based on context
+    if "install.sql" in os.path.basename(file_path):
+        anchor = "USE pulse_university;"
+    else:
+        anchor = "USE pulse_university;"
+
+    new_lines = replace_drop_block(
+        lines=lines,
+        anchor_keyword=anchor,
+        drop_prefix=drop_prefix,
+        object_names=object_names,
+        comment_line=comment_line
+    )
+
+    while new_lines and new_lines[-1].strip() == "":
+        new_lines.pop()
+
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.writelines(new_lines)
+
+    print(f"Updated drop block in {os.path.basename(file_path)} with {len(object_names)} objects.")
+
+def main():
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.abspath(os.path.join(script_dir, "..", ".."))
+
+    install_path = os.path.join(project_root, "sql", "install.sql")
+    views_path = os.path.join(project_root, "sql", "views.sql")
+
+    update_sql_file(
+        file_path=install_path,
+        extract_names_fn=extract_table_names,
+        drop_prefix="DROP TABLE IF EXISTS",
+        comment_line="-- Drop all tables"
+    )
+
+    update_sql_file(
+        file_path=views_path,
+        extract_names_fn=extract_view_names,
+        drop_prefix="DROP VIEW IF EXISTS",
+        comment_line="/* ============  drop old versions if they exist  ============ */"
+    )
 
 if __name__ == "__main__":
     main()

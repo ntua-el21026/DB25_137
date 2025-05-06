@@ -5,14 +5,16 @@
 USE pulse_university;
 
 /* ============  drop old versions if they exist  ============ */
-DROP VIEW IF EXISTS View_Artist_Performance;
-DROP VIEW IF EXISTS View_Event_Staff;
 DROP VIEW IF EXISTS View_Attendee_Performance;
-DROP VIEW IF EXISTS View_Genre_Pairs;
-DROP VIEW IF EXISTS View_Artist_Continents;
+DROP VIEW IF EXISTS View_Yearly_Revenue_By_Method;
+DROP VIEW IF EXISTS View_Artist_Year_Participation;
 DROP VIEW IF EXISTS View_Performance_Detail;
-DROP VIEW IF EXISTS View_Genre_Year_Counts;
 DROP VIEW IF EXISTS View_Attendee_Yearly_Visits;
+DROP VIEW IF EXISTS View_Genre_Pairs;
+DROP VIEW IF EXISTS View_Artist_Performance;
+DROP VIEW IF EXISTS View_Artist_Continents;
+DROP VIEW IF EXISTS View_Genre_Year_Counts;
+DROP VIEW IF EXISTS View_Attendee_Artist_Review;
 
 /* ------------------------------------------------------------
  * View 0 – attendee’s watched performances & own rating (possibly Q 4, 6)
@@ -60,12 +62,12 @@ JOIN Event e ON p.event_id = e.event_id;
  * ------------------------------------------------------------*/
 CREATE VIEW View_Performance_Detail AS
 SELECT p.perf_id,
-       p.event_id,
-       e.fest_year,
-       pt.name AS perf_type,
-       p.datetime,
-       pa.artist_id,
-       pb.band_id
+        p.event_id,
+        e.fest_year,
+        pt.name AS perf_type,
+        p.datetime,
+        pa.artist_id,
+        pb.band_id
 FROM Performance p
 JOIN      Event              e  ON p.event_id = e.event_id
 JOIN      Performance_Type   pt ON p.type_id  = pt.type_id
@@ -93,7 +95,7 @@ SELECT
     COUNT(DISTINCT ag1.artist_id)        AS artist_count
 FROM Artist_Genre ag1
 JOIN Artist_Genre ag2
-  ON ag1.artist_id = ag2.artist_id AND ag1.genre_id < ag2.genre_id
+    ON ag1.artist_id = ag2.artist_id AND ag1.genre_id < ag2.genre_id
 WHERE ag1.artist_id IN (
     SELECT DISTINCT pa.artist_id
     FROM Performance_Artist pa
