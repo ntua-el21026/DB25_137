@@ -8,7 +8,7 @@ SELECT
     artist_id,
     artist_name,
     performance_count
-FROM View_Artist_Performance
+FROM View_Artist_Performance_Rating
 JOIN Max_Performer mp ON performance_count <= mp.max_perf - 5
 ORDER BY performance_count DESC;
 
@@ -17,4 +17,4 @@ ORDER BY performance_count DESC;
 -- idx_review_perf_io on Review(perf_id)
 
 -- View used:
--- View_Artist_Performance
+-- View_Artist_Performance_Rating
