@@ -5,7 +5,7 @@ set +H  # Disable Bash history expansion (!)
 
 # --------- Setup ---------
 DB137="python3 $(dirname "$0")/../cli/db137.py"
-OUTFILE="test/test_cli_results.txt"
+OUTFILE="test_cli_results.txt"
 mkdir -p "$(dirname "$OUTFILE")"
 
 # Redirect all output (stdout + stderr) to the output file only

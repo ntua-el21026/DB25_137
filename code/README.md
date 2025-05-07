@@ -15,7 +15,7 @@ This folder contains utility scripts used to generate and maintain the SQL files
     Output is written to `sql/load.sql`.
 
 - **`code_utils/`**
-  - `dropgen.py`: Automatically inserts a full DROP block into `install.sql` by detecting all created tables.
+  - `dropgen.py`: Automatically inserts a full DROP block into `install.sql`, `views.sql`, `procedures.sql` and `triggers.sql` by detecting all create statemets.
   - `fixeof.py`: Ensures every source file ends with a single newline (prevents merge/diff issues).
   - `qgen.py`: Creates placeholder files Q1.sql–Q15.sql and Q1_out.txt–Q15_out.txt **only if they do not exist or are empty**.
   - `runall.py`: Runs all scripts in `data_generation/`, `code_utils/`, and `organization/` in a safe order.

@@ -297,79 +297,81 @@ class UserManager:
     # ------------------------------------------------------------------------ #
     def execute_sql_file(self, path: str | Path, *, database: str | None = None) -> None:
         """
-        Run every statement in a .sql file by opening one small, autocommitting
-        connection per statement.  Compatible with MySQL 5.7 and avoids any
-        “commands out of sync” errors since we never leave a pending result set
-        nor call commit() on a dying connection.
+        Run every statement in a .sql file.
+
+        * Keeps the simple “split on ;” rule for ordinary DDL/DML.
+        * When a CREATE {PROCEDURE|FUNCTION|TRIGGER|EVENT} is encountered it
+        buffers everything until the matching   END;   so routine bodies may
+        contain normal semicolons without needing an explicit DELIMITER.
         """
-        # 1. Read file and strip out /* … */ block comments
         sql_text = Path(path).read_text(encoding="utf-8")
         sql_text = re.sub(r"/\*.*?\*/", "\n", sql_text, flags=re.S)
 
-        # 2. Split into statements (honouring DELIMITER changes)
-        delimiter = ";"
-        buf       = ""
         statements: list[str] = []
+        buf          = ""
+        delimiter    = ";"
+        in_routine   = False      # inside CREATE PROC / FUNC / etc.
+
+        routine_start_re = re.compile(
+            r"^\s*CREATE\s+(?:DEFINER\s*=\s*\S+\s+)?"
+            r"(PROCEDURE|FUNCTION|TRIGGER|EVENT)\b",
+            re.I,
+        )
 
         for raw in sql_text.splitlines():
             line = raw.rstrip()
-            # skip single-line comments or decorative headers
+
+            # skip full‑line comments and decorative rulers
             if re.match(r"^\s*(--|#)", line) or re.match(r"^\s*-{3,}", line):
                 continue
-            # handle “DELIMITER xxx”
-            mdel = re.match(r"^\s*DELIMITER\s+(.+)$", line, re.I)
-            if mdel:
-                delimiter = mdel.group(1).strip()
-                continue
+
+            # routine start?
+            if routine_start_re.match(line):
+                in_routine = True
 
             buf += line + "\n"
-            if not line.endswith(delimiter):
+
+            # inside routine → flush only when we reach ‘END;’
+            if in_routine:
+                if re.match(r"^\s*END\s*;\s*$", line, re.I):
+                    statements.append(buf.strip())
+                    buf = ""
+                    in_routine = False
                 continue
 
-            stmt = buf.rstrip()[:-len(delimiter)].strip()
-            buf  = ""
-            if stmt:
-                statements.append(stmt)
+            # normal splitter: line ends with current delimiter
+            if line.endswith(delimiter):
+                stmt = buf.rstrip()[:-len(delimiter)].strip()
+                buf = ""
+                if stmt:
+                    statements.append(stmt)
 
         if buf.strip():
             statements.append(buf.strip())
 
-        # 3. Execute each statement in its own autocommit connection
         current_db = database
         for stmt in statements:
-            # a) Handle “USE foo”
+            # handle “USE db”
             muse = re.match(r"^\s*USE\s+`?(\w+)`?\s*$", stmt, re.I)
             if muse:
                 current_db = muse.group(1)
                 continue
 
-            # b) Rewrite “DROP INDEX IF EXISTS” → “DROP INDEX …”
-            mdrop = re.match(
-                r"^\s*DROP\s+INDEX\s+IF\s+EXISTS\s+`?(\w+)`?\s+ON\s+`?(\w+)`?\s*$",
-                stmt, re.I
-            )
-            if mdrop:
-                idx, tbl = mdrop.groups()
-                stmt = f"DROP INDEX `{idx}` ON `{tbl}`"
-
-            # c) Build connection params (with autocommit!)
             params = self._dsn.copy()
+            params["autocommit"] = True
             if current_db:
                 params["database"] = current_db
-            params["autocommit"] = True
 
-            # d) Run it
             try:
-                with mysql.connector.connect(**params) as cnx, \
-                     cnx.cursor()           as cur:
+                with mysql.connector.connect(**params) as cnx, cnx.cursor() as cur:
                     cur.execute(stmt)
+                    while cur.nextset():           # consume all results
+                        pass
             except mysql.connector.Error as err:
-                # silently ignore “1091: Can’t drop … doesn’t exist”
-                if err.errno == 1091 and mdrop:
-                    continue
-                self._log.warning(
-                    "Statement failed in %s:\n%s\nError: %s",
-                    Path(path).name, stmt, err
+                raise click.ClickException(
+                    f"\nStatement failed in `{Path(path).name}`:\n"
+                    f"{stmt[:300]}...\n"
+                    f"Error {err.errno}: {err.msg}"
                 )
 
     def truncate_tables(self, database: str) -> None:

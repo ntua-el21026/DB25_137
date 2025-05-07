@@ -9,6 +9,14 @@ def extract_view_names(sql_text):
     pattern = re.compile(r"CREATE\s+VIEW\s+[`\"]?(\w+)[`\"]?", re.IGNORECASE)
     return [match.group(1) for match in pattern.finditer(sql_text)]
 
+def extract_procedure_names(sql_text):
+    pattern = re.compile(r"CREATE\s+PROCEDURE\s+[`\"]?(\w+)[`\"]?", re.IGNORECASE)
+    return [match.group(1) for match in pattern.finditer(sql_text)]
+
+def extract_trigger_names(sql_text):
+    pattern = re.compile(r"CREATE\s+TRIGGER\s+[`\"]?(\w+)[`\"]?", re.IGNORECASE)
+    return [match.group(1) for match in pattern.finditer(sql_text)]
+
 def replace_drop_block(lines, anchor_keyword, drop_prefix, object_names, comment_line):
     try:
         anchor_index = next(i for i, line in enumerate(lines) if anchor_keyword in line)
@@ -23,7 +31,7 @@ def replace_drop_block(lines, anchor_keyword, drop_prefix, object_names, comment
     # Remove existing drop block
     drop_start = None
     for i in range(anchor_index + 1, len(lines)):
-        if lines[i].strip().startswith(comment_line):
+        if lines[i].strip().startswith(comment_line.strip()):
             drop_start = i
             break
 
@@ -55,15 +63,9 @@ def update_sql_file(file_path, extract_names_fn, drop_prefix, comment_line):
 
     object_names = extract_names_fn(full_text)
 
-    # Choose anchor based on context
-    if "install.sql" in os.path.basename(file_path):
-        anchor = "USE pulse_university;"
-    else:
-        anchor = "USE pulse_university;"
-
     new_lines = replace_drop_block(
         lines=lines,
-        anchor_keyword=anchor,
+        anchor_keyword="USE pulse_university;",
         drop_prefix=drop_prefix,
         object_names=object_names,
         comment_line=comment_line
@@ -80,22 +82,34 @@ def update_sql_file(file_path, extract_names_fn, drop_prefix, comment_line):
 def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.abspath(os.path.join(script_dir, "..", ".."))
-
-    install_path = os.path.join(project_root, "sql", "install.sql")
-    views_path = os.path.join(project_root, "sql", "views.sql")
+    sql_dir = os.path.join(project_root, "sql")
 
     update_sql_file(
-        file_path=install_path,
+        file_path=os.path.join(sql_dir, "install.sql"),
         extract_names_fn=extract_table_names,
         drop_prefix="DROP TABLE IF EXISTS",
         comment_line="-- Drop all tables"
     )
 
     update_sql_file(
-        file_path=views_path,
+        file_path=os.path.join(sql_dir, "views.sql"),
         extract_names_fn=extract_view_names,
         drop_prefix="DROP VIEW IF EXISTS",
         comment_line="/* ============  drop old versions if they exist  ============ */"
+    )
+
+    update_sql_file(
+        file_path=os.path.join(sql_dir, "procedures.sql"),
+        extract_names_fn=extract_procedure_names,
+        drop_prefix="DROP PROCEDURE IF EXISTS",
+        comment_line="-- Drop all procedures"
+    )
+
+    update_sql_file(
+        file_path=os.path.join(sql_dir, "triggers.sql"),
+        extract_names_fn=extract_trigger_names,
+        drop_prefix="DROP TRIGGER IF EXISTS",
+        comment_line="-- Drop all triggers"
     )
 
 if __name__ == "__main__":
