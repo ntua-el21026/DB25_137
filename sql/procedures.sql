@@ -83,14 +83,40 @@ BEGIN
     END IF;
 END;
 
--- ===========================================================
--- Procedure 5: Run maintenance (expire tickets/offers/interests)
--- ===========================================================
+-- ========================================================================
+-- Procedure 5: Run maintenance (expire tickets/offers/interests + ratios)
+-- ========================================================================
 CREATE PROCEDURE RunMaintenance()
 BEGIN
+    DECLARE done INT DEFAULT 0;
+    DECLARE ev_id INT;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
+
+    DECLARE cur CURSOR FOR
+        SELECT DISTINCT event_id FROM Staff_Assignment;
+
+    -- 1. Run expiration subprocedures
     CALL UpdateExpiredTickets();
     CALL ExpireResaleOffers();
     CALL ExpireResaleInterests();
+
+    -- 2. Loop through all events to validate staff ratios
+    OPEN cur;
+    read_loop: LOOP
+        FETCH cur INTO ev_id;
+        IF done THEN
+            LEAVE read_loop;
+        END IF;
+
+        BEGIN
+            DECLARE ratio_error CONDITION FOR SQLSTATE '45000';
+            DECLARE CONTINUE HANDLER FOR ratio_error
+                SELECT CONCAT('⚠ Event ', ev_id, ' fails staff ratio check') AS warning;
+
+            CALL check_staff_ratio(ev_id);
+        END;
+    END LOOP;
+    CLOSE cur;
 END;
 
 -- ===========================================================
@@ -107,4 +133,34 @@ BEGIN
     PREPARE stmt FROM @sql;
     EXECUTE stmt;
     DEALLOCATE PREPARE stmt;
+END;
+
+-- ===========================================================
+-- Procedure 7: Check staff ratios
+-- ===========================================================
+DROP PROCEDURE IF EXISTS check_staff_ratio;
+CREATE PROCEDURE check_staff_ratio(IN ev INT)
+BEGIN
+    DECLARE cap INT; DECLARE sec INT; DECLARE sup INT;
+
+    SELECT s.capacity INTO cap
+    FROM   Event e
+        JOIN Stage s ON e.stage_id = s.stage_id
+    WHERE  e.event_id = ev;
+
+    SELECT COUNT(*) INTO sec
+    FROM   Works_On wo
+        JOIN Staff st ON wo.staff_id = st.staff_id
+    WHERE  wo.event_id = ev
+        AND  st.role_id  = (SELECT role_id FROM Staff_Role WHERE name='security' LIMIT 1);
+
+    SELECT COUNT(*) INTO sup
+    FROM   Works_On wo
+        JOIN Staff st ON wo.staff_id = st.staff_id
+    WHERE  wo.event_id = ev
+        AND  st.role_id  = (SELECT role_id FROM Staff_Role WHERE name='support' LIMIT 1);
+
+    IF sec < CEIL(cap*0.05) OR sup < CEIL(cap*0.02) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Staffing below required ratio.';
+    END IF;
 END;
