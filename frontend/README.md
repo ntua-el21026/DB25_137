@@ -4,6 +4,17 @@ This guide explains how to set up the frontend for the Pulse University Festival
 
 ---
 
+## Technologies Used
+
+| Layer     | Language / Tools                         |
+|-----------|-------------------------------------------|
+| Frontend  | JavaScript (React + Vite + Tailwind CSS), HTML (via JSX) |
+| Backend   | Python 3.10+ (Flask, Flask-CORS)         |
+| Database  | MySQL                        |
+| CLI       | Python (Click, mysql-connector)          |
+
+---
+
 ## 1. Installation Steps (WSL)
 
 1. **Install Node.js via NVM** (Recommended for WSL):
@@ -11,8 +22,8 @@ This guide explains how to set up the frontend for the Pulse University Festival
    ```bash
    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
    source ~/.bashrc
-   nvm install --lts
-   nvm use --lts
+   nvm install 20.11.0
+   nvm use 20.11.0
    ```
 
 2. **Navigate to your project folder in frontend**
@@ -65,24 +76,33 @@ This guide explains how to set up the frontend for the Pulse University Festival
 
 ## 3. Running the Frontend/Backend
 
-Once installed and both servers are running, each one in a different terminal:
+Once installed and both servers are running (in separate terminals):
 
 ```bash
-npm run dev              # Frontend, from inside the frontend folder
-python3 frontend/src/api/serve.py  # Backend, from the project root
+npm run dev                         # Frontend (port 3000)
+python3 frontend/src/api/serve.py   # Backend (port 8000)
 ```
 
-Then open your browser to:
+Open your browser at:
 **[http://localhost:3000](http://localhost:3000)**
 
 ---
 
-## 4. What You Can Do in the Web Interface
+## 4. Environment Notes
+
+- Uses `sessionStorage` for token-based auth with 15-minute expiry
+- All requests to Flask backend go through port **8000**
+- Backend reads optional `.envrc` values
+- File structure reference: See `project_structure.txt`
+
+---
+
+## 5. What You Can Do in the Web Interface
 
 - **Login & Logout**: Secure entry with role-based backend CLI access
 - **View Schema**: Browse tables, views, procedures, and triggers; inspect definitions
 - **Browse Table Data**: Select a table and preview up to 100 rows; export as CSV/TXT
 - **Run SQL Queries**: Use the built-in query console with syntax highlighting
-- **Run CLI Commands**: Submit CLI commands like `q1`, `users list`, `create-db`, etc., and view their live output
+- **Run CLI Commands**: Submit CLI commands like `db137 q1`, `db 137 users list`, `db137 create-db`, etc., and view their live output
 
 ---

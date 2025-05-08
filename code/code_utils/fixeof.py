@@ -1,7 +1,7 @@
 import os
 
 # File extensions to check for code-like files
-CODE_EXTENSIONS = {'.py', '.sql', '.txt', '.md', '.sh'}
+CODE_EXTENSIONS = {'.py', '.sql', '.txt', '.md', '.sh', '.html', '.jsx', '.js', '.json'}
 
 def ensure_trailing_newline(file_path):
     try:

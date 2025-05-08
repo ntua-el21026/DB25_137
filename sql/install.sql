@@ -37,6 +37,7 @@ DROP TABLE IF EXISTS Review;
 DROP TABLE IF EXISTS Resale_Offer;
 DROP TABLE IF EXISTS Resale_Interest;
 DROP TABLE IF EXISTS Resale_Interest_Type;
+DROP TABLE IF EXISTS Resale_Match_Log;
 
 -- Lookup Tables
 CREATE TABLE Continent (
@@ -490,4 +491,19 @@ CREATE TABLE Resale_Interest_Type (
     FOREIGN KEY(type_id) REFERENCES Ticket_Type(type_id)
         ON DELETE RESTRICT ON UPDATE CASCADE,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE Resale_Match_Log (
+    match_id   INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    match_type ENUM('offer', 'interest') NOT NULL,
+    ticket_id  INT UNSIGNED NOT NULL,
+    buyer_id   INT UNSIGNED NOT NULL,
+    seller_id  INT UNSIGNED NOT NULL,
+    match_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ticket_id) REFERENCES Ticket(ticket_id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    FOREIGN KEY (buyer_id)  REFERENCES Attendee(attendee_id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    FOREIGN KEY (seller_id) REFERENCES Attendee(attendee_id)
+        ON DELETE RESTRICT ON UPDATE CASCADE
 );

@@ -24,9 +24,10 @@ DATABASE SETUP
 create-db             Create schema and deploy all SQL scripts
 load-db               Generate and load initial data (faker → load.sql)
 reset                 Shortcut for create-db + load-db
-erase                 Truncate all tables, preserving structure
+erase                 Truncate all tables (except lookup), preserving structure
 drop-db               Drop the entire schema
 status                Show row counts for each table in the schema
+viewq                 Shows the queue matching log
 
 QUERIES
 -----------
@@ -297,9 +298,29 @@ def load_db(user_mgr: UserManager, faker_script: str, sql_dir: str, database: st
 def erase(user_mgr: UserManager, database: str, yes: bool):
     require_root(user_mgr)
     if not yes:
-        click.confirm(f"Are you sure you want to TRUNCATE all tables in `{database}`?", abort=True)
-    user_mgr.truncate_tables(database)
-    click.echo("[OK] All data erased.")
+        click.confirm(f"Are you sure you want to TRUNCATE all **non-lookup** tables in `{database}`?", abort=True)
+
+    lookup_tables = {
+        "Continent",
+        "Staff_Role",
+        "Experience_Level",
+        "Performance_Type",
+        "Ticket_Type",
+        "Payment_Method",
+        "Ticket_Status",
+        "Genre",
+        "SubGenre"
+    }
+
+    with user_mgr._connect() as cnx, cnx.cursor() as cur:
+        cur.execute("SET FOREIGN_KEY_CHECKS = 0;")
+        cur.execute("SHOW FULL TABLES WHERE Table_type = 'BASE TABLE';")
+        tables = [row[0] for row in cur.fetchall() if row[0] not in lookup_tables]
+        for tbl in tables:
+            cur.execute(f"TRUNCATE TABLE `{tbl}`;")
+        cur.execute("SET FOREIGN_KEY_CHECKS = 1;")
+        cnx.commit()
+        click.echo(f"[OK] Truncated {len(tables)} tables in `{database}` (excluding lookup tables)")
 
 @cli.command("status")
 @click.option("--database", default=DEFAULT_DB, show_default=True)
@@ -321,6 +342,33 @@ def status(user_mgr: UserManager, database: str):
 def reset(ctx):
     ctx.invoke(create_db)
     ctx.invoke(load_db)
+
+@cli.command("viewq")
+@click.option("--database", default=DEFAULT_DB, show_default=True)
+@click.pass_obj
+def viewq(user_mgr: UserManager, database: str):
+    """Display the contents of Resale_Match_Log as a formatted table."""
+    with user_mgr._connect() as cnx, cnx.cursor() as cur:
+        cur.execute("""
+            SELECT match_id, match_type, ticket_id, buyer_id, seller_id, match_time
+            FROM Resale_Match_Log
+            ORDER BY match_time DESC
+        """)
+        rows = cur.fetchall()
+        if not rows:
+            click.echo("No resale matches found.")
+            return
+
+        headers = [desc[0] for desc in cur.description]
+        col_widths = [max(len(h), max((len(str(r[i])) for r in rows), default=0)) for i, h in enumerate(headers)]
+
+        def format_row(row):
+            return " | ".join(str(cell).ljust(col_widths[i]) for i, cell in enumerate(row))
+
+        click.echo(" | ".join(h.ljust(col_widths[i]) for i, h in enumerate(headers)))
+        click.echo("-+-".join("-" * w for w in col_widths))
+        for row in rows:
+            click.echo(format_row(row))
 
 # -------------------- QUERIES --------------------
 

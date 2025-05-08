@@ -28,9 +28,10 @@
 │   └── relational.pdf
 ├── docs
 │   ├── README.md
+│   ├── assignment.pdf
 │   └── organization
 │       ├── cardinality_constraints.txt
-│       ├── datalist.txt
+│       ├── db_data.txt
 │       └── project_structure.txt
 ├── frontend
 │   ├── README.md
@@ -92,10 +93,9 @@
 │   └── views.sql
 └── test
     ├── README.md
-    ├── test.py
     ├── test_cli.sh
     ├── test_cli_results.txt
-    ├── test_q.sql
-    └── test_triggers.sh
+    ├── test_triggers.sh
+    └── test_triggers_results.txt
 
 22 directories, 76 files

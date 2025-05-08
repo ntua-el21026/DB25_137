@@ -69,7 +69,7 @@ def main():
         )
         with output_file.open("w", encoding="utf-8") as f:
             f.write(result.stdout)
-        print(f"📁 Project structure saved to: {output_file}")
+        print(f"Project structure saved to: {output_file}")
 
     except subprocess.CalledProcessError as e:
         print("Error running tree:", e)

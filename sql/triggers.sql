@@ -719,6 +719,7 @@ BEGIN
     DECLARE v_ticket INT;
     DECLARE v_buyer  INT;
     DECLARE v_offer  INT;
+    DECLARE v_seller INT;
     DECLARE sActive  INT;
 
     -- status id for 'active'
@@ -732,13 +733,13 @@ BEGIN
     SET v_buyer = NEW.buyer_id;
 
     -- find earliest matching offer (FIFO)
-    SELECT ro.offer_id, ro.ticket_id, t.type_id
-    INTO   v_offer, v_ticket, v_type
+    SELECT ro.offer_id, ro.ticket_id, t.type_id, ro.seller_id
+    INTO   v_offer, v_ticket, v_type, v_seller
     FROM   Resale_Interest_Type rit
-        	JOIN Ticket       t  ON t.type_id    = rit.type_id
-        	JOIN Resale_Offer ro ON ro.ticket_id = t.ticket_id
+            JOIN Ticket       t  ON t.type_id    = rit.type_id
+            JOIN Resale_Offer ro ON ro.ticket_id = t.ticket_id
     WHERE  rit.request_id = NEW.request_id
-    	AND ro.event_id    = v_event
+        AND  ro.event_id    = v_event
     ORDER BY ro.offer_timestamp
     LIMIT 1;
 
@@ -747,13 +748,17 @@ BEGIN
 
         -- transfer ticket
         UPDATE Ticket
-        SET    attendee_id = v_buyer,
-            	status_id   = sActive        -- ensure ticket is active
+        SET     attendee_id = v_buyer,
+                status_id   = sActive        -- ensure ticket is active
         WHERE  ticket_id   = v_ticket;
 
         -- remove offer and interest
         DELETE FROM Resale_Offer    WHERE offer_id   = v_offer;
         DELETE FROM Resale_Interest WHERE request_id = NEW.request_id;
+
+        -- log match
+        INSERT INTO Resale_Match_Log (match_type, ticket_id, buyer_id, seller_id)
+        VALUES ('interest', v_ticket, v_buyer, v_seller);
     END IF;
 END;
 
@@ -785,9 +790,9 @@ BEGIN
     SELECT ri.request_id, ri.buyer_id
     INTO   v_interest, v_buyer
     FROM   Resale_Interest ri
-        	JOIN Resale_Interest_Type rit ON ri.request_id = rit.request_id
+            JOIN Resale_Interest_Type rit ON ri.request_id = rit.request_id
     WHERE  ri.event_id  = v_event
-    	AND rit.type_id  = v_type
+        AND  rit.type_id  = v_type
     ORDER BY ri.interest_timestamp
     LIMIT 1;
 
@@ -796,12 +801,16 @@ BEGIN
 
         -- transfer ticket
         UPDATE Ticket
-        SET    attendee_id = v_buyer,
-            	status_id   = sActive        -- ensure ticket is active
+        SET     attendee_id = v_buyer,
+                status_id   = sActive        -- ensure ticket is active
         WHERE  ticket_id   = v_ticket;
 
         -- remove interest and offer
         DELETE FROM Resale_Offer    WHERE offer_id   = NEW.offer_id;
         DELETE FROM Resale_Interest WHERE request_id = v_interest;
+
+        -- log match
+        INSERT INTO Resale_Match_Log (match_type, ticket_id, buyer_id, seller_id)
+        VALUES ('offer', v_ticket, v_buyer, NEW.seller_id);
     END IF;
 END;
