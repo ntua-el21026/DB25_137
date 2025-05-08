@@ -5,32 +5,33 @@
 USE pulse_university;
 
 -- Drop all triggers
-DROP TRIGGER IF EXISTS trg_solo_artist_limit;
-DROP TRIGGER IF EXISTS trg_no_band_if_artist_exists;
-DROP TRIGGER IF EXISTS trg_artists_must_share_band;
-DROP TRIGGER IF EXISTS trg_artist_redundant_if_band_performing;
-DROP TRIGGER IF EXISTS trg_artist_same_band;
+DROP TRIGGER IF EXISTS trg_band_validate_before_ins;
+DROP TRIGGER IF EXISTS trg_band_sync_members_after_ins;
+DROP TRIGGER IF EXISTS trg_artist_validate_before_ins;
+DROP TRIGGER IF EXISTS trg_auto_assign_band_after_artist_ins;
 DROP TRIGGER IF EXISTS trg_no_double_stage_artist;
 DROP TRIGGER IF EXISTS trg_no_double_stage_band;
 DROP TRIGGER IF EXISTS trg_no_stage_overlap;
 DROP TRIGGER IF EXISTS trg_max_consecutive_years_artist;
+DROP TRIGGER IF EXISTS trg_max_consecutive_years_band;
 DROP TRIGGER IF EXISTS trg_event_within_festival_dates;
-DROP TRIGGER IF EXISTS trg_performance_within_festival;
 DROP TRIGGER IF EXISTS trg_performance_inside_event;
-DROP TRIGGER IF EXISTS trg_validate_performance_break;
-DROP TRIGGER IF EXISTS trg_no_stage_overlap_upd;
-DROP TRIGGER IF EXISTS trg_validate_performance_break_upd;
+DROP TRIGGER IF EXISTS trg_safe_festival_date_update;
+DROP TRIGGER IF EXISTS trg_safe_event_date_update;
 DROP TRIGGER IF EXISTS trg_delete_band_if_no_members;
-DROP TRIGGER IF EXISTS trg_staff_ratio_after_insert;
 DROP TRIGGER IF EXISTS trg_staff_ratio_after_delete;
 DROP TRIGGER IF EXISTS trg_staff_ratio_after_update;
-DROP TRIGGER IF EXISTS trg_ticket_capacity_guard;
-DROP TRIGGER IF EXISTS trg_mark_event_full;
+DROP TRIGGER IF EXISTS trg_ticket_capacity_check;
 DROP TRIGGER IF EXISTS trg_check_vip_ticket_limit;
+DROP TRIGGER IF EXISTS trg_validate_ticket_ean;
+DROP TRIGGER IF EXISTS trg_validate_ticket_ean_upd;
 DROP TRIGGER IF EXISTS trg_resale_offer_only_active;
 DROP TRIGGER IF EXISTS trg_review_only_with_used_ticket;
 DROP TRIGGER IF EXISTS trg_resale_offer_timestamp;
 DROP TRIGGER IF EXISTS trg_resale_interest_timestamp;
+DROP TRIGGER IF EXISTS trg_stage_capacity_update;
+DROP TRIGGER IF EXISTS trg_block_purchase_date_update;
+DROP TRIGGER IF EXISTS trg_validate_ticket_purchase_date;
 DROP TRIGGER IF EXISTS trg_artist_subgenre_consistency;
 DROP TRIGGER IF EXISTS trg_band_subgenre_consistency;
 DROP TRIGGER IF EXISTS trg_delete_attendee_cleanup;
@@ -383,7 +384,6 @@ BEGIN
         END IF;
     END IF;
 END;
-
 
 -- ===========================================================
 -- 3. Band membership clean-up

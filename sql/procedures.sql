@@ -11,6 +11,7 @@ DROP PROCEDURE IF EXISTS ExpireResaleInterests;
 DROP PROCEDURE IF EXISTS ScanTicket;
 DROP PROCEDURE IF EXISTS RunMaintenance;
 DROP PROCEDURE IF EXISTS sp_rename_self;
+DROP PROCEDURE IF EXISTS check_staff_ratio;
 
 -- ===========================================================
 -- Procedure 1: Update expired tickets (active / on offer → unused)

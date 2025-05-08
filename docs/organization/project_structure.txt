@@ -1,5 +1,7 @@
 .
 ├── .envrc
+├── .vscode
+├── DB Assignment 2024-2025.pdf
 ├── LICENSE
 ├── README.md
 ├── cli
@@ -93,6 +95,7 @@
     ├── test.py
     ├── test_cli.sh
     ├── test_cli_results.txt
-    └── test_q.sql
+    ├── test_q.sql
+    └── test_triggers.sh
 
-21 directories, 74 files
+22 directories, 76 files

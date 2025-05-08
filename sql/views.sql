@@ -89,7 +89,6 @@ LEFT JOIN Review r   ON r.perf_id       = p.perf_id
                     AND r.attendee_id   = att.attendee_id
 GROUP BY att.attendee_id, attendee_name, e.event_id, e.title;
 
-
 /* ------------------------------------------------------------
  * View 6 – attendee visit count per calendar year (Q 9)
  * ------------------------------------------------------------*/

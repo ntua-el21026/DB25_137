@@ -251,7 +251,7 @@ def _print_ok(msg: str) -> None:
 
 @cli.command("create-db")
 @click.option("--sql-dir", type=click.Path(exists=True, file_okay=False),
-              default=str(DEFAULT_SQL_DIR), show_default=True)
+                default=str(DEFAULT_SQL_DIR), show_default=True)
 @click.option("--database", default=DEFAULT_DB, show_default=True)
 @click.pass_obj
 def create_db(user_mgr: UserManager, sql_dir: str, database: str):
@@ -278,9 +278,9 @@ def drop_db(user_mgr: UserManager, database: str, yes: bool):
 
 @cli.command("load-db")
 @click.option("--faker", "faker_script", type=click.Path(exists=True),
-              default=str(FAKER_SCRIPT), show_default=True)
+                default=str(FAKER_SCRIPT), show_default=True)
 @click.option("--sql-dir", type=click.Path(exists=True, file_okay=False),
-              default=str(DEFAULT_SQL_DIR), show_default=True)
+                default=str(DEFAULT_SQL_DIR), show_default=True)
 @click.option("--database", default=DEFAULT_DB, show_default=True)
 @click.pass_obj
 def load_db(user_mgr: UserManager, faker_script: str, sql_dir: str, database: str):
