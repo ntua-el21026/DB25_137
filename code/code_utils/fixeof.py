@@ -1,7 +1,25 @@
 import os
+from pathlib import Path
+import sys
+
+try:
+    from pathspec import PathSpec
+    from pathspec.patterns import GitWildMatchPattern
+except ImportError:
+    print("You need to install the pathspec module: pip install pathspec")
+    sys.exit(1)
 
 # File extensions to check for code-like files
 CODE_EXTENSIONS = {'.py', '.sql', '.txt', '.md', '.sh', '.html', '.jsx', '.js', '.json'}
+
+def load_gitignore(path):
+    """Parse .gitignore file and return a PathSpec object."""
+    ignore_file = path / '.gitignore'
+    if not ignore_file.exists():
+        return None
+    with open(ignore_file) as f:
+        patterns = f.read().splitlines()
+    return PathSpec.from_lines(GitWildMatchPattern, patterns)
 
 def ensure_trailing_newline(file_path):
     try:
@@ -17,18 +35,21 @@ def ensure_trailing_newline(file_path):
         print(f"Error processing {file_path}: {e}")
 
 def main():
-    # Start from the project root
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.abspath(os.path.join(script_dir, "..", ".."))
+    script_dir = Path(__file__).resolve().parent
+    project_root = script_dir.parent.parent
 
     print(f"Scanning project from: {project_root}\n")
 
+    spec = load_gitignore(project_root)
+
     for root, _, files in os.walk(project_root):
         for file in files:
-            _, ext = os.path.splitext(file)
-            if ext.lower() in CODE_EXTENSIONS:
-                path = os.path.join(root, file)
-                ensure_trailing_newline(path)
+            file_path = Path(root) / file
+            rel_path = file_path.relative_to(project_root)
+            if spec and spec.match_file(str(rel_path)):
+                continue  # Skip ignored files
+            if file_path.suffix.lower() in CODE_EXTENSIONS:
+                ensure_trailing_newline(file_path)
 
     print("\nDone checking all code files.")
 

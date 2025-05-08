@@ -2,6 +2,8 @@
 
 A command-line interface for administering the Pulse University Festival database system (2024–2025).
 
+> This CLI must be installed and run inside a **Linux or WSL** environment.
+
 ---
 
 ## 1. Requirements
@@ -254,6 +256,10 @@ db137 <command>
   db137 status
   ```
 
+- `viewq` – Show the contents of the Resale_Match_Log table:
+  ```bash
+  db137 viewq
+  ```
 ---
 
 ### QUERIES
@@ -267,3 +273,5 @@ db137 <command>
   ```bash
   db137 q1-to-q5
   ```
+
+---
