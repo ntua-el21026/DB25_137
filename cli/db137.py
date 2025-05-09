@@ -421,47 +421,24 @@ def viewq(user_mgr: UserManager, database: str):
 
 # -------------------- QUERIES --------------------
 
-# -------------------- INDIVIDUAL QUERY COMMANDS --------------------
-def register_q_command(q: int):
-    qname = f"q{q}"
+@cli.command("q")
+@click.argument("start", type=int)
+@click.argument("end", required=False, type=int)
+@click.option("--database", default=DEFAULT_DB, show_default=True)
+@click.pass_obj
+def run_query(user_mgr: UserManager, start: int, end: int | None, database: str):
 
-    @cli.command(name=qname)
-    @click.option("--database", default=DEFAULT_DB, show_default=True)
-    @click.pass_obj
-    def run_q(user_mgr: UserManager, database: str, qnum=q):
+    start_q = start
+    end_q = end if end is not None else start_q
 
-        sql_path = QUERIES_DIR / f"Q{qnum}.sql"
-        out_path = QUERIES_DIR / f"Q{qnum}_out.txt"
+    for q in range(start_q, end_q + 1):
+        sql_path = QUERIES_DIR / f"Q{q}.sql"
+        out_path = QUERIES_DIR / f"Q{q}_out.txt"
         if not sql_path.exists():
-            raise click.ClickException(f"Missing: {sql_path}")
+            click.echo(f"[SKIP] Missing {sql_path.name}")
+            continue
         user_mgr.run_query_to_file(sql_path, out_path, database=database)
         _print_ok(f"{sql_path.name} → {out_path.name}")
-
-for q in range(1, 16):
-    register_q_command(q)
-
-# -------------------- RANGE QUERY COMMANDS --------------------
-def register_qrange_command(start: int, end: int):
-    cmd_name = f"q{start}-to-q{end}"
-
-    @cli.command(name=cmd_name)
-    @click.option("--database", default=DEFAULT_DB, show_default=True)
-    @click.pass_obj
-    def run_range(user_mgr: UserManager, database: str, s=start, e=end):
-
-        for q in range(s, e + 1):
-            sql_path = QUERIES_DIR / f"Q{q}.sql"
-            out_path = QUERIES_DIR / f"Q{q}_out.txt"
-            if not sql_path.exists():
-                click.echo(f"[SKIP] Missing {sql_path.name}")
-                continue
-            user_mgr.run_query_to_file(sql_path, out_path, database=database)
-            _print_ok(f"{sql_path.name} → {out_path.name}")
-
-# Register q1-to-q2, ..., q14-to-q15
-for i in range(1, 16):
-    for j in range(i + 1, 16):
-        register_qrange_command(i, j)
 
 
 if __name__ == "__main__":

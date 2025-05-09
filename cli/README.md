@@ -356,30 +356,30 @@ db137 <command>
 
 ### QUERIES
 
-- `qX` – Run one query (e.g., `Q01.sql → Q01_out.txt`):
+- `q X` – Run one query (e.g., `Q1.sql → Q1_out.txt`):
 
   **Required**:
-  - `qX` (query number, e.g. `q1`, `q14`)
+  - `q X` (query number, e.g. `q 1`, `q 14`)
 
   **Optional**:
   - `--database` (default: `pulse_university`)
 
   Example:
   ```bash
-  db137 q1 --database pulse_university
+  db137 q 1 --database pulse_university
   ```
 
-- `qX-to-qY` – Run a query batch:
+- `q X Y` – Run a query batch:
 
   **Required**:
-  - `qX-to-qY` (range format, e.g. `q1-to-q5`)
+  - `q X Y` (range format, e.g. `q 1 5`)
 
   **Optional**:
   - `--database` (default: `pulse_university`)
 
   Example:
   ```bash
-  db137 q1-to-q5 --database pulse_university
+  db137 q 1 5 --database pulse_university
   ```
 
 ---
