@@ -454,9 +454,22 @@ class UserManager:
 
         with out_path.open("w", encoding="utf-8") as f:
             if rows:
-                f.write("\t".join(columns) + "\n")
+                # Compute column widths
+                widths = [len(col) for col in columns]
                 for row in rows:
-                    f.write("\t".join(str(v) if v is not None else "NULL" for v in row) + "\n")
+                    for i, cell in enumerate(row):
+                        widths[i] = max(widths[i], len(str(cell)) if cell is not None else 4)
+
+                # Write header
+                f.write("  ".join(col.ljust(widths[i]) for i, col in enumerate(columns)) + "\n")
+                f.write("  ".join("-" * widths[i] for i in range(len(columns))) + "\n")
+
+                # Write rows
+                for row in rows:
+                    f.write("  ".join(
+                        (str(cell) if cell is not None else "NULL").ljust(widths[i])
+                        for i, cell in enumerate(row)
+                    ) + "\n")
             else:
                 f.write("(no rows)\n")
 

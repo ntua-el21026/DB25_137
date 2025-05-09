@@ -421,32 +421,40 @@ def viewq(user_mgr: UserManager, database: str):
 
 # -------------------- QUERIES --------------------
 
-@cli.command("qX")
-@argument("qx", metavar="qX", type=str)
-@click.option("--database", default=DEFAULT_DB, show_default=True)
-@click.pass_obj
-def qx_cmd(user_mgr: UserManager, qx: str, database: str):
-    qnum = re.sub(r"\D", "", qx).zfill(2)
-    sql_path = QUERIES_DIR / f"Q{qnum}.sql"
-    out_path = QUERIES_DIR / f"Q{qnum}_out.txt"
-    if not sql_path.exists():
-        raise click.ClickException(f"Missing: {sql_path}")
-    user_mgr.run_query_to_file(sql_path, out_path, database=database)
-    _print_ok(f"{sql_path.name} → {out_path.name}")
+# -------------------- INDIVIDUAL QUERY COMMANDS --------------------
+def register_q_command(q: int):
+    qname = f"q{q}"
 
+    @cli.command(name=qname)
+    @click.option("--database", default=DEFAULT_DB, show_default=True)
+    @click.pass_obj
+    def run_q(user_mgr: UserManager, database: str, qnum=q):
+
+        sql_path = QUERIES_DIR / f"Q{qnum}.sql"
+        out_path = QUERIES_DIR / f"Q{qnum}_out.txt"
+        if not sql_path.exists():
+            raise click.ClickException(f"Missing: {sql_path}")
+        user_mgr.run_query_to_file(sql_path, out_path, database=database)
+        _print_ok(f"{sql_path.name} → {out_path.name}")
+
+for q in range(1, 16):
+    register_q_command(q)
+
+# -------------------- QUERY RANGE COMMAND --------------------
 @cli.command("qX-to-qY")
 @argument("qrange", metavar="qX-to-qY", type=str)
 @click.option("--database", default=DEFAULT_DB, show_default=True)
 @click.pass_obj
 def qrange_cmd(user_mgr: UserManager, qrange: str, database: str):
-    match = re.match(r"q(\d+)-to-q(\d+)", qrange)
+
+    match = re.fullmatch(r"q(\d+)-to-q(\d+)", qrange)
     if not match:
         raise click.ClickException("Expected format: q1-to-q4")
+
     start, end = sorted((int(match[1]), int(match[2])))
     for q in range(start, end + 1):
-        qid = f"Q{q:02}"
-        sql_path = QUERIES_DIR / f"{qid}.sql"
-        out_path = QUERIES_DIR / f"{qid}_out.txt"
+        sql_path = QUERIES_DIR / f"Q{q}.sql"
+        out_path = QUERIES_DIR / f"Q{q}_out.txt"
         if not sql_path.exists():
             click.echo(f"[SKIP] Missing {sql_path.name}")
             continue
