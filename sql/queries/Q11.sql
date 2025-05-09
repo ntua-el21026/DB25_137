@@ -10,6 +10,7 @@ SELECT
     performance_count
 FROM View_Artist_Performance_Rating
 JOIN Max_Performer mp ON performance_count <= mp.max_perf - 5
+WHERE performance_count > 0
 ORDER BY performance_count DESC;
 
 -- Index used:
