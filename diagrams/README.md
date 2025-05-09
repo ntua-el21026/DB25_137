@@ -9,6 +9,7 @@ This folder contains the visual documentation of the Pulse University database s
 - **`relational.pdf`**: The relational schema diagram, showing:
   - All database tables and foreign key links (see `sql/install.sql`)
   - Indexing strategy (see `sql/indexing.sql`)
-  - Stored procedures (see `sql/procedures.sql`)
   - Triggers (see `sql/triggers.sql`)
   - Views (see `sql/views.sql`)
+
+---

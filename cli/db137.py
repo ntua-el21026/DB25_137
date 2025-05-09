@@ -17,22 +17,22 @@ users list            Show all users and their privileges
 users drop            Delete a database user entirely
 users drop-all        Delete all users defined on '%'
 users whoami          Show current DB connection info
-users set-defaults    Grant typical privileges (SELECT, INSERT, ...)
+users set-defaults    Grant typical privileges (SELECT, INSERT, .)
 
 DATABASE SETUP
 -------------------
 create-db             Create schema and deploy all SQL scripts
-load-db               Generate and load initial data (faker → load.sql)
-reset                 Shortcut for create-db + load-db
-erase                 Truncate all tables (except lookup), preserving structure
+load-db               Load synthetic data via faker in the database
+reset-db              Shortcut for drop-db + create-db + load-db
+erase-db              Truncate all tables (except lookup), preserving structure
 drop-db               Drop the entire schema
-status                Show row counts for each table in the schema
+db-status             Show row counts for each table in the schema
 viewq                 Shows the queue matching log
 
 QUERIES
 -----------
 qX                    Run sql/queries/QX.sql and save to QX_out.txt
-qX-to-qY              Run range of queries and save results (e.g., q1-to-q4)
+qX-to-qY              Run range of queries and save results (e.g. q1-to-q4)
 """
 
 from __future__ import annotations
@@ -55,15 +55,29 @@ if str(PROJECT_ROOT.parent) not in sys.path:
 
 from cli.users.manager import UserManager, parse_priv_list
 
-DEFAULT_DB = "pulse_university"
+# Default DB name now honors $DB_NAME
+DEFAULT_DB = os.getenv("DB_NAME", "pulse_university")
 DEFAULT_SQL_DIR = PROJECT_ROOT / "sql"
-DEFAULT_TEST_DIR = PROJECT_ROOT.parent / "test"
-FAKER_SCRIPT = PROJECT_ROOT.parent / "code" / "data_generation" / "faker.py"
+FAKER_SCRIPT = PROJECT_ROOT / "code" / "data_generation" / "faker.py"
 QUERIES_DIR = DEFAULT_SQL_DIR / "queries"
 
 @click.group(context_settings=dict(help_option_names=["-h", "--help"]))
-@click.option("--host", default="localhost", show_default=True)
-@click.option("--port", default=3306, show_default=True)
+# Host/Port options now read from $DB_HOST / $DB_PORT
+@click.option(
+    "--host",
+    envvar="DB_HOST",
+    default=lambda: os.getenv("DB_HOST", "localhost"),
+    show_default=True,
+    help="Database server hostname (or $DB_HOST)"
+)
+@click.option(
+    "--port",
+    envvar="DB_PORT",
+    default=lambda: int(os.getenv("DB_PORT", 3306)),
+    show_default=True,
+    type=int,
+    help="Database server port (or $DB_PORT)"
+)
 @click.option("--root-user", envvar="DB_ROOT_USER", required=True)
 @click.option("--root-pass", envvar="DB_ROOT_PASS", required=True)
 @click.pass_context
@@ -84,15 +98,18 @@ def cli(ctx, host, port, root_user, root_pass):
             f"[DB Connection Error] Unable to connect as '{root_user}':\n{err}"
         )
 
+
 def require_root(user_mgr: UserManager):
     if not user_mgr.is_root():
         raise click.ClickException("This command is restricted to root users.")
+
 
 def require_root_or_self(user_mgr: UserManager, target: str):
     current_user = user_mgr.connected_user().split("@")[0]
     if not user_mgr.is_root() and current_user != target:
         raise click.ClickException("You can only modify your own account.")
     
+
 def print_privs(user_mgr: UserManager, username: str, db: str):
     """
     Utility: Show granted privileges for a user on a specific database.
@@ -128,7 +145,7 @@ def register(user_mgr: UserManager, username, password, default_db, privileges):
     require_root(user_mgr)
     parsed_privs = parse_priv_list(privileges)
     user_mgr.register_user(username, password, default_db, parsed_privs)
-    click.echo(f"User '{username}' registered. Use `db137 users list` to verify grants.")
+    click.echo(f"[OK] User '{username}' registered. Use `db137 users list` to verify grants.")
 
 @users.command("grant")
 @click.argument("username")
@@ -167,7 +184,7 @@ def revoke(user_mgr: UserManager, username, db, privileges, show_diff):
         print_privs(user_mgr, username, db)
 
     user_mgr.revoke_privileges(username, db, priv_list)
-    click.echo(f"Revoked {privileges} on {db} from {username}.")
+    click.echo(f"[OK] Revoked {privileges} on {db} from {username}.")
 
     if show_diff:
         click.echo(f"After:\n  {username}@% →")
@@ -180,7 +197,7 @@ def revoke(user_mgr: UserManager, username, db, privileges, show_diff):
 def rename(user_mgr: UserManager, old_username, new_username):
     require_root_or_self(user_mgr, old_username)
     user_mgr.change_username(old_username, new_username)
-    click.echo(f"{old_username} renamed to {new_username}.")
+    click.echo(f"[OK] {old_username} renamed to {new_username}.")
 
 @users.command("passwd")
 @click.argument("username")
@@ -189,7 +206,7 @@ def rename(user_mgr: UserManager, old_username, new_username):
 def passwd_cmd(user_mgr: UserManager, username, new_pass):
     require_root_or_self(user_mgr, username)
     user_mgr.change_password(username, new_pass)
-    click.echo("Password updated.")
+    click.echo("[OK] Password updated.")
 
 @users.command("list")
 @click.pass_obj
@@ -210,7 +227,7 @@ def drop(user_mgr: UserManager, username):
         click.echo("Cannot drop user 'root'. Operation aborted.")
         return
     user_mgr.drop_user(username)
-    click.echo(f"Dropped user {username}.")
+    click.echo(f"[OK] Dropped user {username}.")
 
 @users.command("drop-all")
 @click.pass_obj
@@ -243,7 +260,7 @@ def set_defaults(user_mgr: UserManager, username, db, show_diff):
         click.echo(f"After:\n  {username}@% →")
         print_privs(user_mgr, username, db)
 
-    click.echo(f"Granted default perms to {username} on {db}")
+    click.echo(f"[OK] Granted default perms to {username} on {db}.")
 
 # -------------------- DATABASE --------------------
 
@@ -265,7 +282,7 @@ def create_db(user_mgr: UserManager, sql_dir: str, database: str):
         else:
             user_mgr.execute_sql_file(path, database=database)
         _print_ok(fname)
-    _print_ok("Database schema deployed")
+    _print_ok("Database schema deployed.")
 
 @cli.command("drop-db")
 @click.option("--database", default=DEFAULT_DB, show_default=True)
@@ -275,7 +292,7 @@ def drop_db(user_mgr: UserManager, database: str, yes: bool):
     if not yes:
         click.confirm(f"Drop entire schema `{database}`?", abort=True)
     user_mgr._execute_sql(f"DROP DATABASE IF EXISTS `{database}`;")
-    click.echo(f"[OK] Schema `{database}` dropped")
+    click.echo(f"[OK] Schema `{database}` dropped.")
 
 @cli.command("load-db")
 @click.option("--faker", "faker_script", type=click.Path(exists=True),
@@ -287,11 +304,9 @@ def drop_db(user_mgr: UserManager, database: str, yes: bool):
 def load_db(user_mgr: UserManager, faker_script: str, sql_dir: str, database: str):
     require_root(user_mgr)
     subprocess.check_call([sys.executable, faker_script])
-    _print_ok("faker.py complete")
-    user_mgr.execute_sql_file(Path(sql_dir) / "load.sql", database=database)
-    _print_ok("load.sql executed")
+    click.echo(f"[OK] Database loaded via faker.py.")
 
-@cli.command("erase")
+@cli.command("erase-db")
 @click.option("--database", default=DEFAULT_DB, show_default=True)
 @click.option("--yes", is_flag=True, help="Skip confirmation prompt")
 @click.pass_obj
@@ -312,7 +327,7 @@ def erase(user_mgr: UserManager, database: str, yes: bool):
         "SubGenre"
     }
 
-    with user_mgr._connect() as cnx, cnx.cursor() as cur:
+    with user_mgr._connect(database) as cnx, cnx.cursor() as cur:
         cur.execute("SET FOREIGN_KEY_CHECKS = 0;")
         cur.execute("SHOW FULL TABLES WHERE Table_type = 'BASE TABLE';")
         tables = [row[0] for row in cur.fetchall() if row[0] not in lookup_tables]
@@ -320,37 +335,44 @@ def erase(user_mgr: UserManager, database: str, yes: bool):
             cur.execute(f"TRUNCATE TABLE `{tbl}`;")
         cur.execute("SET FOREIGN_KEY_CHECKS = 1;")
         cnx.commit()
-        click.echo(f"[OK] Truncated {len(tables)} tables in `{database}` (excluding lookup tables)")
+        click.echo(f"[OK] Truncated {len(tables)} tables in `{database}` (excluding lookup tables).")
 
-@cli.command("status")
+@cli.command("db-status")
 @click.option("--database", default=DEFAULT_DB, show_default=True)
 @click.pass_obj
 def status(user_mgr: UserManager, database: str):
-    with user_mgr._connect() as cnx, cnx.cursor() as cur:
-        cur.execute("SHOW FULL TABLES WHERE Table_type = 'BASE TABLE';")
-        tables = [row[0] for row in cur.fetchall()]
-        if not tables:
+    with user_mgr._connect() as cnx, cnx.cursor(dictionary=True) as cur:
+        cur.execute("""
+            SELECT table_name AS name, table_rows AS 'rows'
+            FROM information_schema.tables
+            WHERE table_schema = %s
+            AND table_type = 'BASE TABLE'
+            ORDER BY table_name
+        """, (database,))
+        rows = cur.fetchall()
+        if not rows:
             click.echo(f"No base tables found in `{database}`.")
             return
-        for tbl in tables:
-            cur.execute(f"SELECT COUNT(*) FROM `{tbl}`;")
-            count = cur.fetchone()[0]
-            click.echo(f"{tbl:<32} {count:>6} rows")
+        max_name = max(len(r["name"]) for r in rows)
+        for r in rows:
+            click.echo(f"{r['name']:<{max_name}} {r['rows']:>6} rows")
 
-@cli.command("reset")
+@cli.command("reset-db")
 @click.pass_context
 def reset(ctx):
+    ctx.invoke(drop_db, yes=True)
     ctx.invoke(create_db)
     ctx.invoke(load_db)
+    click.echo("[OK] Database reset complete.")
 
 @cli.command("viewq")
 @click.option("--database", default=DEFAULT_DB, show_default=True)
 @click.pass_obj
 def viewq(user_mgr: UserManager, database: str):
     """Display the contents of Resale_Match_Log as a formatted table."""
-    with user_mgr._connect() as cnx, cnx.cursor() as cur:
+    with user_mgr._connect(database) as cnx, cnx.cursor() as cur:
         cur.execute("""
-            SELECT match_id, match_type, ticket_id, buyer_id, seller_id, match_time
+            SELECT match_id, match_type, ticket_id, offered_type_id, requested_type_id, buyer_id, seller_id, match_time
             FROM Resale_Match_Log
             ORDER BY match_time DESC
         """)

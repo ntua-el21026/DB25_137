@@ -37,6 +37,7 @@ DROP TRIGGER IF EXISTS trg_band_subgenre_consistency;
 DROP TRIGGER IF EXISTS trg_delete_attendee_cleanup;
 DROP TRIGGER IF EXISTS trg_match_resale_interest;
 DROP TRIGGER IF EXISTS trg_match_resale_offer;
+DROP TRIGGER IF EXISTS trg_set_event_date;
 
 -- ===========================================================
 -- 1. Performance-assignment rules (solo / band)
@@ -131,20 +132,21 @@ CREATE TRIGGER trg_auto_assign_band_after_artist_ins
 AFTER INSERT ON Performance_Artist
 FOR EACH ROW
 BEGIN
-    -- Only act if no band yet
-    IF (SELECT COUNT(*) FROM Performance_Band WHERE perf_id = NEW.perf_id) = 0 THEN
-        DECLARE target_band INT;
+    -- all DECLAREs first
+    DECLARE target_band INT;
 
-        --find a band of the new artist whose EVERY member is already in Performance_Artist for that performance
+    -- rest of the logic
+    IF (SELECT COUNT(*) FROM Performance_Band WHERE perf_id = NEW.perf_id) = 0 THEN
+        /* find a band whose every member is now present */
         SELECT bm.band_id INTO target_band
         FROM   Band_Member bm
         WHERE  bm.artist_id = NEW.artist_id
         GROUP BY bm.band_id
         HAVING COUNT(*) = (
-                    SELECT COUNT(*)         -- #members of that band
+                    SELECT COUNT(*)               -- #members of that band
                     FROM Band_Member
                     WHERE band_id = bm.band_id)
-            AND  COUNT(*) = (               -- equals #artists on the stage
+            AND COUNT(*) = (
                     SELECT COUNT(DISTINCT artist_id)
                     FROM   Performance_Artist
                     WHERE  perf_id = NEW.perf_id)
@@ -222,42 +224,46 @@ CREATE TRIGGER trg_max_consecutive_years_artist
 BEFORE INSERT ON Performance_Artist
 FOR EACH ROW
 BEGIN
-    DECLARE y INT;
+    DECLARE perf_year INT;
 
-    -- Find the year for the new performance
-    SELECT f.fest_year INTO y
-    FROM   Performance p
-        JOIN Event    e ON p.event_id = e.event_id
-        JOIN Festival f ON e.fest_year = f.fest_year
-    WHERE  p.perf_id = NEW.perf_id;
+    -- Year of the performance we’re inserting
+    SELECT f.fest_year
+        INTO perf_year
+        FROM Performance p
+        JOIN Event     e ON p.event_id = e.event_id
+        JOIN Festival  f ON e.fest_year = f.fest_year
+        WHERE p.perf_id = NEW.perf_id;
 
-    -- Now check whether adding this year would cause 4+ consecutive years
+    -- Past years + the pending year for this artist
     IF EXISTS (
-        SELECT 1
-        FROM (
-            SELECT f.fest_year
-            FROM   Performance p
-                JOIN Performance_Artist pa ON p.perf_id = pa.perf_id
-                JOIN Event    e ON p.event_id = e.event_id
-                JOIN Festival f ON e.fest_year = f.fest_year
-            WHERE  pa.artist_id = NEW.artist_id
-            UNION
-            SELECT y  -- include the new year
-        ) AS all_years
-        GROUP BY fest_year
-        HAVING EXISTS (
-            SELECT 1
-            FROM (
-                SELECT a1.fest_year + 1 AS y2, a1.fest_year + 2 AS y3, a1.fest_year + 3 AS y4
-                FROM   (SELECT DISTINCT fest_year FROM all_years) a1
-            ) AS seq
-            WHERE seq.y2 IN (SELECT fest_year FROM all_years)
-                AND seq.y3 IN (SELECT fest_year FROM all_years)
-                AND seq.y4 IN (SELECT fest_year FROM all_years)
+        WITH years AS (
+            SELECT DISTINCT f.fest_year AS y
+                FROM Performance        p
+                JOIN Event              e ON e.event_id   = p.event_id
+                JOIN Festival           f ON f.fest_year  = e.fest_year
+                WHERE EXISTS (
+                        SELECT 1 FROM Performance_Artist pa
+                        WHERE pa.perf_id = p.perf_id
+                        AND pa.artist_id = NEW.artist_id
+                    )
+            UNION ALL
+            SELECT perf_year
+        ),
+        seq AS (
+            SELECT y,
+                    ROW_NUMBER() OVER (ORDER BY y) AS rn
+                FROM years
+        ),
+        runs AS (
+            SELECT COUNT(*) AS run_len
+                FROM seq
+                GROUP BY y - rn          -- islands‑and‑gaps trick
         )
+        SELECT 1 FROM runs WHERE run_len >= 4
     ) THEN
         SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'Artist exceeds 3-year consecutive limit.';
+        SET MESSAGE_TEXT =
+            'Artist exceeds the 3‑year consecutive performance limit';
     END IF;
 END;
 
@@ -268,46 +274,51 @@ FOR EACH ROW
 BEGIN
     DECLARE perf_year INT;
 
-    -- 1. Get the year of the performance we're assigning the band to
-    SELECT f.fest_year INTO perf_year
-    FROM   Performance p
-        JOIN Event e ON p.event_id = e.event_id
-        JOIN Festival f ON e.fest_year = f.fest_year
-    WHERE  p.perf_id = NEW.perf_id;
+    -- Year of the performance we are inserting
+    SELECT f.fest_year
+        INTO perf_year
+        FROM Performance p
+        JOIN Event     e ON p.event_id = e.event_id
+        JOIN Festival  f ON e.fest_year = f.fest_year
+        WHERE p.perf_id = NEW.perf_id;
 
-    -- 2. Now check each member:
-    --    Would adding `perf_year` cause any artist to exceed 3 consecutive years?
+    -- Build a set of {artist_id, year} rows:
+        -- every past year each band member has performed
+        -- plus the year we are about to add for each artist look for a run of 4 consecutive years.
     IF EXISTS (
-        SELECT 1
-        FROM Band_Member bm
-        WHERE bm.band_id = NEW.band_id
-            AND EXISTS (
-                SELECT 1
-                FROM (
-                    SELECT f.fest_year
-                    FROM Performance p2
-                    JOIN Performance_Artist pa ON p2.perf_id = pa.perf_id
-                    JOIN Event e ON p2.event_id = e.event_id
-                    JOIN Festival f ON e.fest_year = f.fest_year
-                    WHERE pa.artist_id = bm.artist_id
-                    UNION
-                    SELECT perf_year  -- simulate adding the new year
-                ) AS all_years
-                GROUP BY 1
-                HAVING EXISTS (
-                    SELECT 1
-                    FROM (
-                        SELECT a.fest_year + 1 AS y2, a.fest_year + 2 AS y3, a.fest_year + 3 AS y4
-                        FROM (SELECT DISTINCT fest_year FROM all_years) a
-                    ) AS seq
-                    WHERE seq.y2 IN (SELECT fest_year FROM all_years)
-                    AND seq.y3 IN (SELECT fest_year FROM all_years)
-                    AND seq.y4 IN (SELECT fest_year FROM all_years)
-                )
-            )
+        WITH member_years AS (
+            SELECT bm.artist_id,
+                    f.fest_year AS y
+                FROM Band_Member bm
+                JOIN Performance_Artist pa ON pa.artist_id = bm.artist_id
+                JOIN Performance        p  ON p.perf_id    = pa.perf_id
+                JOIN Event              e  ON e.event_id   = p.event_id
+                JOIN Festival           f  ON f.fest_year  = e.fest_year
+                WHERE bm.band_id = NEW.band_id
+
+            UNION ALL
+
+            SELECT bm.artist_id, perf_year
+                FROM Band_Member bm
+                WHERE bm.band_id = NEW.band_id
+        ),
+        seq AS (
+            SELECT artist_id,
+                    y,
+                    ROW_NUMBER() OVER (PARTITION BY artist_id ORDER BY y) AS rn
+                FROM (SELECT DISTINCT artist_id, y FROM member_years) x
+        ),
+        runs AS (
+            SELECT artist_id,
+                    COUNT(*) AS run_len
+                FROM seq
+                GROUP BY artist_id, y - rn         -- islands‑and‑gaps trick
+        )
+        SELECT 1 FROM runs WHERE run_len >= 4
     ) THEN
         SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'One or more band members exceed 3-year consecutive limit.';
+        SET MESSAGE_TEXT =
+            'One or more band members exceed the 3‑year consecutive limit';
     END IF;
 END;
 
@@ -711,54 +722,57 @@ END;
 
 -- 31. Match one resale interest with the FIFO offer queue (auto-buy ticket if seller exists)
 CREATE TRIGGER trg_match_resale_interest
-AFTER INSERT ON Resale_Interest
+AFTER INSERT ON Resale_Interest_Type
 FOR EACH ROW
 BEGIN
-    DECLARE v_event  INT;
-    DECLARE v_type   INT;
-    DECLARE v_ticket INT;
-    DECLARE v_buyer  INT;
-    DECLARE v_offer  INT;
-    DECLARE v_seller INT;
-    DECLARE sActive  INT;
+    DECLARE v_event   INT;
+    DECLARE v_type    INT;
+    DECLARE v_ticket  INT;
+    DECLARE v_offer   INT;
+    DECLARE v_buyer   INT;
+    DECLARE v_seller  INT;
+    DECLARE sActive   INT;
 
-    -- status id for 'active'
+    -- lookup status id for 'active'
     SELECT status_id INTO sActive
-    FROM   Ticket_Status
-    WHERE  name = 'active'
-    LIMIT  1;
+    FROM Ticket_Status WHERE name = 'active' LIMIT 1;
 
-    -- interest details
-    SET v_event = NEW.event_id;
-    SET v_buyer = NEW.buyer_id;
+    -- lookup event and buyer
+    SELECT event_id, buyer_id
+    INTO v_event, v_buyer
+    FROM Resale_Interest
+    WHERE request_id = NEW.request_id;
 
-    -- find earliest matching offer (FIFO)
-    SELECT ro.offer_id, ro.ticket_id, t.type_id, ro.seller_id
-    INTO   v_offer, v_ticket, v_type, v_seller
-    FROM   Resale_Interest_Type rit
-            JOIN Ticket       t  ON t.type_id    = rit.type_id
-            JOIN Resale_Offer ro ON ro.ticket_id = t.ticket_id
-    WHERE  rit.request_id = NEW.request_id
-        AND  ro.event_id    = v_event
+    -- type requested
+    SET v_type = NEW.type_id;
+
+    -- find first matching offer
+    SELECT ro.offer_id, ro.ticket_id, ro.seller_id
+    INTO v_offer, v_ticket, v_seller
+    FROM Resale_Offer ro
+    JOIN Ticket t ON t.ticket_id = ro.ticket_id
+    WHERE ro.event_id = v_event AND t.type_id = v_type
     ORDER BY ro.offer_timestamp
     LIMIT 1;
 
-    -- if offer found, perform transaction
+    -- if match found, reassign ticket + log match
     IF v_offer IS NOT NULL THEN
-
-        -- transfer ticket
         UPDATE Ticket
-        SET     attendee_id = v_buyer,
-                status_id   = sActive        -- ensure ticket is active
-        WHERE  ticket_id   = v_ticket;
+        SET attendee_id = v_buyer,
+            status_id   = sActive
+        WHERE ticket_id = v_ticket;
 
-        -- remove offer and interest
-        DELETE FROM Resale_Offer    WHERE offer_id   = v_offer;
-        DELETE FROM Resale_Interest WHERE request_id = NEW.request_id;
+        DELETE FROM Resale_Offer
+        WHERE offer_id = v_offer;
 
-        -- log match
-        INSERT INTO Resale_Match_Log (match_type, ticket_id, buyer_id, seller_id)
-        VALUES ('interest', v_ticket, v_buyer, v_seller);
+        DELETE FROM Resale_Interest
+        WHERE request_id = NEW.request_id;
+
+        INSERT INTO Resale_Match_Log (
+            match_type, ticket_id, offered_type_id, requested_type_id,
+            buyer_id, seller_id
+        )
+        VALUES ('interest', v_ticket, v_type, v_type, v_buyer, v_seller);
     END IF;
 END;
 
@@ -767,50 +781,52 @@ CREATE TRIGGER trg_match_resale_offer
 AFTER INSERT ON Resale_Offer
 FOR EACH ROW
 BEGIN
-    DECLARE v_ticket   INT;
-    DECLARE v_event    INT;
-    DECLARE v_type     INT;
-    DECLARE v_buyer    INT;
-    DECLARE v_interest INT;
-    DECLARE sActive    INT;
+    DECLARE v_event   INT;
+    DECLARE v_type    INT;
+    DECLARE v_req     INT;
+    DECLARE v_buyer   INT;
+    DECLARE sActive   INT;
 
-    -- status id for 'active'
+    -- lookup status id for 'active'
     SELECT status_id INTO sActive
-    FROM   Ticket_Status
-    WHERE  name = 'active'
-    LIMIT  1;
+    FROM Ticket_Status WHERE name = 'active' LIMIT 1;
 
-    -- offer details
-    SELECT t.ticket_id, t.event_id, t.type_id
-    INTO   v_ticket, v_event, v_type
-    FROM   Ticket t
-    WHERE  t.ticket_id = NEW.ticket_id;
+    -- get event id from offer
+    SET v_event = NEW.event_id;
 
-    -- find earliest matching interest (FIFO)
+    -- lookup type of the offered ticket
+    SELECT type_id INTO v_type
+    FROM Ticket WHERE ticket_id = NEW.ticket_id;
+
+    -- find first matching interest
     SELECT ri.request_id, ri.buyer_id
-    INTO   v_interest, v_buyer
-    FROM   Resale_Interest ri
-            JOIN Resale_Interest_Type rit ON ri.request_id = rit.request_id
-    WHERE  ri.event_id  = v_event
-        AND  rit.type_id  = v_type
+    INTO v_req, v_buyer
+    FROM Resale_Interest ri
+    JOIN Resale_Interest_Type rit ON rit.request_id = ri.request_id
+    WHERE ri.event_id = v_event AND rit.type_id = v_type
     ORDER BY ri.interest_timestamp
     LIMIT 1;
 
-    -- if buyer found, perform transaction
-    IF v_buyer IS NOT NULL THEN
-
-        -- transfer ticket
+    -- if match found, reassign ticket + log match
+    IF v_req IS NOT NULL THEN
         UPDATE Ticket
-        SET     attendee_id = v_buyer,
-                status_id   = sActive        -- ensure ticket is active
-        WHERE  ticket_id   = v_ticket;
+        SET attendee_id = v_buyer,
+            status_id   = sActive
+        WHERE ticket_id = NEW.ticket_id;
 
-        -- remove interest and offer
-        DELETE FROM Resale_Offer    WHERE offer_id   = NEW.offer_id;
-        DELETE FROM Resale_Interest WHERE request_id = v_interest;
+        DELETE FROM Resale_Interest
+        WHERE request_id = v_req;
 
-        -- log match
-        INSERT INTO Resale_Match_Log (match_type, ticket_id, buyer_id, seller_id)
-        VALUES ('offer', v_ticket, v_buyer, NEW.seller_id);
+        INSERT INTO Resale_Match_Log (
+            match_type, ticket_id, offered_type_id, requested_type_id,
+            buyer_id, seller_id
+        )
+        VALUES ('offer', NEW.ticket_id, v_type, v_type, v_buyer, NEW.seller_id);
     END IF;
 END;
+
+-- 33. Event date
+CREATE TRIGGER trg_set_event_date
+BEFORE INSERT ON Event
+FOR EACH ROW
+    SET NEW.generated_date = CAST(NEW.start_dt AS DATE);

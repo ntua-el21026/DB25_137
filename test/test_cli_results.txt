@@ -113,7 +113,7 @@ Password updated.
 
 ▶ Verify login as testuser1 after password change...
 Command: env DB_ROOT_USER=testuser1 DB_ROOT_PASS=NewTest5678! python3 ./../cli/db137.py users whoami
-Connected as: testuser1@localhost
+Connected as: testuser1@%
 [PASS] Verify login as testuser1 after password change
 
 ▶ Rename testuser1 to testuser3...
@@ -228,7 +228,7 @@ Password updated.
 
 ▶ Verify login as testuser2 with new password...
 Command: env DB_ROOT_USER=testuser2 DB_ROOT_PASS=Changed567! python3 ./../cli/db137.py users whoami
-Connected as: testuser2@localhost
+Connected as: testuser2@%
 [PASS] Verify login as testuser2 with new password
 
 ▶ Drop all test users...

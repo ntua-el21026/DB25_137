@@ -88,6 +88,10 @@ The CLI requires DB root credentials. Best practice is to define them in a `.env
 export DB_ROOT_USER=$(echo -n 'root' | tr -d '')
 export DB_ROOT_PASS=$(echo -n 'yourpassword' | tr -d '')
 export PYTHONPATH=$PWD
+
+export DB_HOST='your_localhost'
+export DB_NAME='pulse_university'
+export DB_PORT=3306
 ```
 
 Then allow it:
@@ -173,16 +177,46 @@ db137 <command>
 ### USERS
 
 - `users register` – Create a new user and grant privileges:
+
+  **Required**:
+  - `username` (e.g. `alice`)
+  - `--password` (e.g. `--password secret`)
+
+  **Optional**:
+  - `--default-db` (default: `pulse_university`)
+  - `--privileges` (default: `FULL`)
+
+  Example:
   ```bash
   db137 users register alice --password secret --default-db pulse_university --privileges SELECT,INSERT
   ```
 
-- `users grant` – Grant privileges on a schema (with optional diff view):
+- `users grant` – Grant privileges on a schema:
+
+  **Required**:
+  - `username` (e.g. `alice`)
+  - `--db` (e.g. `--db pulse_university`)
+  - `--privileges` (e.g. `--privileges SELECT,INSERT`)
+
+  **Optional**:
+  - `--show-diff` (shows before/after privileges)
+
+  Example:
   ```bash
   db137 users grant alice --db pulse_university --privileges SELECT,INSERT --show-diff
   ```
 
-- `users revoke` – Revoke privileges from a user (with optional diff view):
+- `users revoke` – Revoke privileges from a user:
+
+  **Required**:
+  - `username` (e.g. `alice`)
+  - `--db` (e.g. `--db pulse_university`)
+  - `--privileges` (e.g. `--privileges SELECT`)
+
+  **Optional**:
+  - `--show-diff` (shows before/after privileges)
+
+  Example:
   ```bash
   db137 users revoke alice --db pulse_university --privileges SELECT --show-diff
   ```
@@ -217,7 +251,16 @@ db137 <command>
   db137 users whoami
   ```
 
-- `users set-defaults` – Grant standard CRUD privileges (with optional diff view):
+- `users set-defaults` – Grant standard CRUD privileges:
+
+  **Required**:
+  - `username` (e.g. `alice`)
+
+  **Optional**:
+  - `--db` (default: `pulse_university`)
+  - `--show-diff` (shows before/after privileges)
+
+  Example:
   ```bash
   db137 users set-defaults alice --show-diff
   ```
@@ -226,52 +269,108 @@ db137 <command>
 
 ### DATABASE SETUP
 
-- `create-db` – Deploy schema, indexing, views, triggers:
+- `create-db` – Deploy schema, indexing, views, and triggers:
+
+  **Optional**:
+  - `--sql-dir` (default: `sql`)
+  - `--database` (default: `pulse_university`)
+
+  Example:
   ```bash
-  db137 create-db
+  db137 create-db --sql-dir sql --database pulse_university
   ```
 
-- `load-db` – Run `faker.py` and import data:
+- `drop-db` – Delete the database schema:
+
+  **Optional**:
+  - `--database` (default: `pulse_university`)
+  - `--yes` (skip confirmation prompt)
+
+  Example:
+  ```bash
+  db137 drop-db --database pulse_university --yes
+  ```
+
+- `reset-db` – Full setup (drop + create + load):
+
+  **No arguments required or optional.**
+
+  Example:
+  ```bash
+  db137 reset-db
+  ```
+
+- `load-db` – Run `faker.py` and import synthetic data into the database:
+
+  **Optional**:
+  - `--faker` (path to `faker.py`; default: `code/data_generation/faker.py`)
+  - `--sql-dir` (directory containing SQL files; default: `sql`)
+  - `--database` (database to load into; default: `pulse_university`)
+
+  Example:
   ```bash
   db137 load-db
   ```
 
-- `reset` – Full setup (create + load):
+- `erase-db` – Truncate all base tables (data only):
+
+  **Optional**:
+  - `--database` (default: `pulse_university`)
+  - `--yes` (skip confirmation prompt)
+
+  Example:
   ```bash
-  db137 reset
+  db137 erase-db --database pulse_university --yes
   ```
 
-- `erase` – Truncate all base tables (data only):
+- `db-status` – Print row counts for all base tables:
+
+  **Optional**:
+  - `--database` (default: `pulse_university`)
+
+  Example:
   ```bash
-  db137 erase
+  db137 db-status --database pulse_university
   ```
 
-- `drop-db` – Delete the database schema:
+- `viewq` – Show contents of the Resale_Match_Log table:
+
+  **Optional**:
+  - `--database` (default: `pulse_university`)
+
+  Example:
   ```bash
-  db137 drop-db
+  db137 viewq --database pulse_university
   ```
 
-- `status` – Print row counts for all base tables:
-  ```bash
-  db137 status
-  ```
-
-- `viewq` – Show the contents of the Resale_Match_Log table:
-  ```bash
-  db137 viewq
-  ```
 ---
 
 ### QUERIES
 
-- `qX` – Run one query (e.g., Q01.sql → Q01_out.txt):
+- `qX` – Run one query (e.g., `Q01.sql → Q01_out.txt`):
+
+  **Required**:
+  - `qX` (query number, e.g. `q1`, `q14`)
+
+  **Optional**:
+  - `--database` (default: `pulse_university`)
+
+  Example:
   ```bash
-  db137 q1
+  db137 q1 --database pulse_university
   ```
 
 - `qX-to-qY` – Run a query batch:
+
+  **Required**:
+  - `qX-to-qY` (range format, e.g. `q1-to-q5`)
+
+  **Optional**:
+  - `--database` (default: `pulse_university`)
+
+  Example:
   ```bash
-  db137 q1-to-q5
+  db137 q1-to-q5 --database pulse_university
   ```
 
 ---

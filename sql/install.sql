@@ -253,15 +253,16 @@ CREATE TABLE Event (
     is_full   BOOLEAN NOT NULL DEFAULT FALSE,
     start_dt  DATETIME NOT NULL,
     end_dt    DATETIME NOT NULL,
-    image   VARCHAR(100) NOT NULL CHECK (image LIKE 'https://%'),
-    caption VARCHAR(100) NOT NULL,
+    image     VARCHAR(100) NOT NULL CHECK (image LIKE 'https://%'),
+    caption   VARCHAR(100) NOT NULL,
     fest_year INT UNSIGNED NOT NULL,
     stage_id  INT UNSIGNED NOT NULL,
+    generated_date DATE NOT NULL,                       -- updated via trigger
     UNIQUE KEY uq_event_stage (event_id, stage_id),
-    UNIQUE (DATE(start_dt)),
+    UNIQUE KEY uq_start_date (generated_date),
     FOREIGN KEY (fest_year) REFERENCES Festival(fest_year)
-        ON DELETE RESTRICT  ON UPDATE CASCADE,
-    FOREIGN KEY (stage_id)  REFERENCES Stage(stage_id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    FOREIGN KEY (stage_id) REFERENCES Stage(stage_id)
         ON DELETE RESTRICT ON UPDATE CASCADE,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -494,15 +495,21 @@ CREATE TABLE Resale_Interest_Type (
 );
 
 CREATE TABLE Resale_Match_Log (
-    match_id   INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    match_type ENUM('offer', 'interest') NOT NULL,
-    ticket_id  INT UNSIGNED NOT NULL,
-    buyer_id   INT UNSIGNED NOT NULL,
-    seller_id  INT UNSIGNED NOT NULL,
-    match_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    match_id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    match_type         ENUM('offer', 'interest') NOT NULL,
+    ticket_id          INT UNSIGNED NOT NULL,
+    offered_type_id    INT UNSIGNED NOT NULL,
+    requested_type_id  INT UNSIGNED NOT NULL,
+    buyer_id           INT UNSIGNED NOT NULL,
+    seller_id          INT UNSIGNED NOT NULL,
+    match_time         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (ticket_id) REFERENCES Ticket(ticket_id)
         ON DELETE RESTRICT ON UPDATE CASCADE,
-    FOREIGN KEY (buyer_id)  REFERENCES Attendee(attendee_id)
+    FOREIGN KEY (offered_type_id) REFERENCES Ticket_Type(type_id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    FOREIGN KEY (requested_type_id) REFERENCES Ticket_Type(type_id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    FOREIGN KEY (buyer_id) REFERENCES Attendee(attendee_id)
         ON DELETE RESTRICT ON UPDATE CASCADE,
     FOREIGN KEY (seller_id) REFERENCES Attendee(attendee_id)
         ON DELETE RESTRICT ON UPDATE CASCADE

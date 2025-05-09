@@ -1,20 +1,37 @@
-Data Generation Summary
-
-=======================
-
-This file documents the configuration of the synthetic data generated for populating the Pulse University Festival database.
-
-
-Parameters:
------------
-NUM_ARTISTS = 60
-NUM_BANDS = 25
-NUM_STAGES = 35
-NUM_LOCATIONS = 6
-NUM_FESTIVALS = 12
-NUM_EVENTS_PER_FESTIVAL = 1
-NUM_PERFORMANCES_PER_EVENT = 12
-NUM_ATTENDEES = 180
-NUM_TICKETS = 240
-NUM_STAFF = 100
-NUM_REVIEWS = 40
+Pulse University – Data Summary
+-----------------------------------
+Artist                   → 55 rows
+Artist_Genre             → 100 rows
+Artist_SubGenre          → 100 rows
+Attendee                 → 2000 rows
+Band                     → 10 rows
+Band_Genre               → 20 rows
+Band_Member              → 30 rows
+Band_SubGenre            → 20 rows
+Continent                → 6 rows
+Equipment                → 5 rows
+Event                    → 55 rows
+Experience_Level         → 5 rows
+Festival                 → 12 rows
+Genre                    → 10 rows
+Location                 → 12 rows
+Payment_Method           → 3 rows
+Performance              → 251 rows
+Performance_Artist       → 582 rows
+Performance_Band         → 1182 rows
+Performance_Type         → 5 rows
+Resale_Interest          → 0 rows
+Resale_Interest_Type     → 0 rows
+Resale_Match_Log         → 100 rows
+Resale_Offer             → 102 rows
+Review                   → 16 rows
+Staff                    → 30 rows
+Staff_Role               → 8 rows
+Stage                    → 36 rows
+Stage_Equipment          → 180 rows
+SubGenre                 → 30 rows
+Ticket                   → 4422 rows
+Ticket_Status            → 4 rows
+Ticket_Type              → 5 rows
+Works_On                 → 385 rows
+-----------------------------------

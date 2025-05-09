@@ -22,7 +22,7 @@ Script execution:
 -----------------
 UserManager.execute_sql_file(path, database=None)
 UserManager.truncate_tables(database)
-UserManager.run_query_to_file(sql, out, database=...)
+UserManager.run_query_to_file(sql, out, database=.)
 
 Utilities:
 ----------
@@ -43,10 +43,12 @@ import mysql.connector
 from mysql.connector import errorcode
 from mysql.connector.cursor_cext import CMySQLCursor
 
+DEFAULT_DB = os.getenv("DB_NAME", "pulse_university")
+
 __all__ = ["UserManager", "parse_priv_list"]
 
 # ---------------------------------------------------------------------------- #
-# Utility function – Normalize privilege list (e.g., "SELECT,INSERT")
+# Utility function – Normalize privilege list (e.g. "SELECT,INSERT")
 # ---------------------------------------------------------------------------- #
 def parse_priv_list(raw: str | Iterable[str]) -> List[str]:
     """
@@ -61,7 +63,6 @@ def parse_priv_list(raw: str | Iterable[str]) -> List[str]:
     if any(p in {"FULL", "ALL"} for p in cleaned):
         return ["ALL PRIVILEGES"]
     return cleaned
-
 
 # ---------------------------------------------------------------------------- #
 # Core class – manages users, privileges, and database scripts
@@ -98,7 +99,7 @@ class UserManager:
                             f"CREATE USER `{username}`@'{host}' IDENTIFIED BY %s", (password,)
                         )
                     except mysql.connector.errors.DatabaseError as e:
-                        if e.errno == errorcode.ER_CANNOT_USER:  # 1396: user exists
+                        if e.errno == errorcode.ER_CANNOT_USER:
                             raise click.ClickException(f"User `{username}` already exists at host '{host}'.")
                         else:
                             raise
@@ -119,6 +120,25 @@ class UserManager:
 
         except mysql.connector.Error as err:
             raise click.ClickException(f"[DB Error] {err}")
+
+    # ... rest of the methods unchanged ...
+
+    @contextlib.contextmanager
+    def _connect(self, database: str | None = None):
+        dsn = self._dsn.copy()
+        dsn["host"] = os.getenv("DB_HOST", dsn["host"])
+        dsn["port"] = int(os.getenv("DB_PORT", dsn["port"]))
+        env_db = os.getenv("DB_NAME")
+        if database:
+            dsn["database"] = database
+        elif env_db:
+            dsn["database"] = env_db
+
+        cnx = mysql.connector.connect(**dsn)
+        try:
+            yield cnx
+        finally:
+            cnx.close()
 
     def drop_user(self, username: str) -> None:
         dropped = False
@@ -299,18 +319,21 @@ class UserManager:
         """
         Run every statement in a .sql file.
 
-        * Keeps the simple “split on ;” rule for ordinary DDL/DML.
-        * When a CREATE {PROCEDURE|FUNCTION|TRIGGER|EVENT} is encountered it
-        buffers everything until the matching   END;   so routine bodies may
-        contain normal semicolons without needing an explicit DELIMITER.
+        * Still works without DELIMITER directives.
+        * Correctly buffers CREATE {PROCEDURE|FUNCTION|TRIGGER|EVENT} bodies even
+        when they contain nested BEGIN … END blocks.
+        * Splits ordinary DDL/DML on the terminating semicolon.
         """
         sql_text = Path(path).read_text(encoding="utf-8")
+
+        # strip /* … */ comments first (newline‑friendly)
         sql_text = re.sub(r"/\*.*?\*/", "\n", sql_text, flags=re.S)
 
         statements: list[str] = []
-        buf          = ""
-        delimiter    = ";"
-        in_routine   = False      # inside CREATE PROC / FUNC / etc.
+        buf: list[str] = []
+
+        depth = 0          # nesting depth of BEGIN/END
+        in_routine = False # inside CREATE PROC / FUNC / TRIGGER / EVENT
 
         routine_start_re = re.compile(
             r"^\s*CREATE\s+(?:DEFINER\s*=\s*\S+\s+)?"
@@ -321,37 +344,49 @@ class UserManager:
         for raw in sql_text.splitlines():
             line = raw.rstrip()
 
-            # skip full‑line comments and decorative rulers
-            if re.match(r"^\s*(--|#)", line) or re.match(r"^\s*-{3,}", line):
+            # ignore -- / # full‑line comments
+            if re.match(r"^\s*(--|#)", line):
                 continue
 
-            # routine start?
-            if routine_start_re.match(line):
+            # ── Detect start of a stored routine ───────────────────────────────
+            if not in_routine and routine_start_re.match(line):
                 in_routine = True
+                depth = 0                    # reset depth counter
 
-            buf += line + "\n"
+            # accumulate line
+            buf.append(line)
 
-            # inside routine → flush only when we reach ‘END;’
+            # Track nesting only when we're inside a routine
             if in_routine:
-                if re.match(r"^\s*END\s*;\s*$", line, re.I):
-                    statements.append(buf.strip())
-                    buf = ""
-                    in_routine = False
+                # count BEGIN (but not BEGIN … END for handlers/loops keywords)
+                if re.search(r"\bBEGIN\b", line, re.I):
+                    depth += 1
+                # END followed by ; closes one level
+                if re.search(r"\bEND\s*;\s*$", line, re.I):
+                    depth -= 1
+                    if depth == 0:
+                        # full routine captured
+                        statements.append("\n".join(buf).strip())
+                        buf.clear()
+                        in_routine = False
                 continue
 
-            # normal splitter: line ends with current delimiter
-            if line.endswith(delimiter):
-                stmt = buf.rstrip()[:-len(delimiter)].strip()
-                buf = ""
-                if stmt:
-                    statements.append(stmt)
+            # ── Normal splitter outside routines ───────────────────────────────
+            if line.endswith(";"):
+                # remove trailing semicolon
+                buf[-1] = buf[-1][:-1]
+                statements.append("\n".join(buf).strip())
+                buf.clear()
 
-        if buf.strip():
-            statements.append(buf.strip())
+        # leftover (no trailing ;) ?
+        if buf:
+            statements.append("\n".join(buf).strip())
 
+        # ------------------------------------------------------------------- #
+        # Execute collected statements (unchanged from original implementation)
+        # ------------------------------------------------------------------- #
         current_db = database
         for stmt in statements:
-            # handle “USE db”
             muse = re.match(r"^\s*USE\s+`?(\w+)`?\s*$", stmt, re.I)
             if muse:
                 current_db = muse.group(1)
@@ -365,7 +400,7 @@ class UserManager:
             try:
                 with mysql.connector.connect(**params) as cnx, cnx.cursor() as cur:
                     cur.execute(stmt)
-                    while cur.nextset():           # consume all results
+                    while cur.nextset():
                         pass
             except mysql.connector.Error as err:
                 raise click.ClickException(
@@ -438,10 +473,11 @@ class UserManager:
                 raise
 
     @contextlib.contextmanager
-    def _connect(self):
+    def _connect(self, database: str | None = None):
         dsn = self._dsn.copy()
-        # Override host with environment variable (e.g., DB_HOST=127.0.0.1)
         dsn["host"] = os.getenv("DB_HOST", "localhost")
+        if database:
+            dsn["database"] = database
         cnx = mysql.connector.connect(**dsn)
         try:
             yield cnx
