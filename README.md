@@ -60,7 +60,7 @@ As per the course specifications, we designed and implemented a **relational dat
   - Role-based user management:
     - `users register`, `grant`, `revoke`, `rename`, `passwd`, `list`, `drop`, `drop-all`, `whoami`, `set-defaults`
   - Query execution with export support:
-    - `qX` and `qX-to-qY` batch runs with output saved to file
+    - `q X` and `q X Y` batch runs (from query X to query Y) with output saved to the corresponding file
 
 - **Web Frontend**:
   - Developed with React (Vite) and Flask backend

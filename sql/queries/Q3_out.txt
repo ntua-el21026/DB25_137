@@ -1,1 +1,14 @@
-(no rows)
+artist_id  artist_name        fest_year  warm_up_count
+---------  -----------------  ---------  -------------
+2          Artist1 Lastname   2020       4            
+2          Artist1 Lastname   2026       4            
+2          Artist1 Lastname   2018       4            
+3          Artist2 Lastname   2019       4            
+11         Artist10 Lastname  2027       4            
+25         Artist24 Lastname  2024       4            
+27         Artist26 Lastname  2023       4            
+30         Artist29 Lastname  2016       4            
+32         Artist31 Lastname  2022       4            
+45         Artist44 Lastname  2021       4            
+25         Artist24 Lastname  2025       3            
+26         Artist25 Lastname  2017       3            

@@ -31,8 +31,8 @@ viewq                 Shows the queue matching log
 
 QUERIES
 -----------
-qX                    Run sql/queries/QX.sql and save to QX_out.txt
-qX-to-qY              Run range of queries and save results (e.g. q1-to-q4)
+q X                   Run sql/queries/QX.sql and save to QX_out.txt
+q X Y                 Run range of queries and save results (e.g. q 1 4)
 """
 
 from __future__ import annotations

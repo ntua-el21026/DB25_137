@@ -17,7 +17,7 @@ def main():
     code_dir = os.path.abspath(os.path.dirname(__file__))
 
     # Explicit run order by folder
-    custom_order = ["data_generation", "code_utils"]
+    custom_order = ["code_utils"]
     org_folder = os.path.join(code_dir, "organization")
 
     for folder_name in custom_order:
