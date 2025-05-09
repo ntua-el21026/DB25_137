@@ -8,23 +8,28 @@ This folder contains utility scripts used to generate and maintain the SQL files
 
    - **`faker.py`**  
      Generates complete, trigger-compliant synthetic data for the Pulse University Festival database. This includes realistic creation of:
-
      - **Events, performances, artists, bands, attendees, tickets, and reviews**
      - **Stages, festivals, locations, equipment, and staffing**
-
      The script ensures:
-
      - Full enforcement of **foreign key constraints**, **unique keys**, **NOT NULLs**, **CHECKs**, etc.
      - Compliance with all **business logic enforced via triggers**, such as:
        - Time and capacity constraints
        - Performance overlap and artist/band scheduling limits
-       - Subgenre-genre consistency
+       - Subgenre–genre consistency
        - 3-year consecutive performance caps
      - Data tailored to support **graded query coverage**, including:
        - Special cases for Q2, Q4, Q6, Q11, and Q14
-       - Artist/band performance patterns across years and genres
 
-     The script auto-runs `create-db`, inserts all data using safe transactional logic, and **logs row counts** to `docs/organization/db_data.txt`.
+     > The script auto-runs `create-db`, inserts all data using safe transactional logic, and logs row counts to `docs/organization/db_data.txt`.
+
+   - **`faker_sql.py`**  
+     Builds on `faker.py` by generating a standalone `sql/load.sql` file containing only those INSERT/DELETE statements which successfully passed all triggers and constraints. It:
+     - Executes each DML against the live database first (to capture `lastrowid` lookups and verify trigger compliance)
+     - Writes only successful statements into `sql/load.sql`
+     - Preserves full referential integrity without disabling foreign-key checks
+     - Ensures the final `load.sql` can be loaded standalone into a clean schema without violating any triggers
+
+     > The script auto-runs `create-db`, inserts all queries in load.sql using safe transactional logic, and logs row counts to `docs/organization/db_data.txt`.
 
 2. **`code_utils/`**
 

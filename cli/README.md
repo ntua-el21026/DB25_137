@@ -8,7 +8,7 @@ A command-line interface for administering the Pulse University Festival databas
 
 ## 1. Requirements
 
-- Python 3.8+
+- Python 3.10 or newer
 - Packages:
 
 ```bash
@@ -300,17 +300,26 @@ db137 <command>
   db137 reset-db
   ```
 
-- `load-db` – Run `faker.py` and import synthetic data into the database:
+- `load-db` – Load synthetic data into the database, either from SQL or Python generators.
+
+  **Behavior**:
+  - By default, loads data from `load.sql`
+  - `--g` → Run `faker_sql.py` (basic generator), then execute `create-db` and `load.sql` with progress bar
+  - `--i` → Run `faker.py` (intelligent, trigger-compliant generator)
 
   **Optional**:
-  - `--faker` (path to `faker.py`; default: `code/data_generation/faker.py`)
+  - `--g` (run `faker_sql.py` + `load.sql`)
+  - `--i` (run only `faker.py`)
   - `--sql-dir` (directory containing SQL files; default: `sql`)
   - `--database` (database to load into; default: `pulse_university`)
 
-  Example:
+  `--g` and `--i` are mutually exclusive.
+
+  **Example**:
   ```bash
   db137 load-db
-  ```
+  db137 load-db --g
+  db137 load-db --i
 
 - `erase-db` – Truncate all base tables (data only):
 
