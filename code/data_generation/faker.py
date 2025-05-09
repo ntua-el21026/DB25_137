@@ -175,6 +175,7 @@ print("→ equipment")
 for t in ("Stage_Equipment", "Equipment"):
     reset_table(t)
 
+# Define equipment with varied placeholder images
 equip_items = [
     ("PA System",     "Main sound reinforcement"),
     ("Lighting Rig",  "LED and moving heads"),
@@ -182,10 +183,19 @@ equip_items = [
     ("Wireless Mics", "8-channel microphone set"),
     ("Smoke Machine", "Low-fog special effect"),
 ]
+placeholder_bases = [
+    "https://placehold.co/600x400?text=Audio",
+    "https://placehold.co/600x400?text=Lights",
+    "https://placehold.co/600x400?text=Backline",
+    "https://placehold.co/600x400?text=Mics",
+    "https://placehold.co/600x400?text=Effects",
+]
 for name, caption in equip_items:
+    # choose a random placeholder image for variety
+    img = random.choice(placeholder_bases)
     cur.execute(
-        "INSERT INTO Equipment (name,image,caption) VALUES (%s,%s,%s)",
-        (name, "https://placehold.co/600x400", caption)
+        "INSERT INTO Equipment (name, image, caption) VALUES (%s, %s, %s)",
+        (name, img, caption)
     )
 
 cur.execute("SELECT equip_id FROM Equipment")
@@ -195,19 +205,30 @@ equip_ids = [r["equip_id"] for r in cur.fetchall()]
 print("→ stages")
 reset_table("Stage")
 stage_of_year: Dict[int, int] = {}
+
 for yr in range(EARLIEST, LATEST + 1):
     for idx in range(1, STAGES_PER_YEAR + 1):
+        # create stage label
         label = f"Main Stage {yr}" if idx == 1 else f"Stage {idx} {yr}"
+        # vary capacity ±20%
+        cap = random.randint(int(CAPACITY * 0.8), int(CAPACITY * 1.2))
+        # generate a unique placeholder image per stage
+        img = f"https://placehold.co/800x600?text={label.replace(' ', '+')}"
+        # include capacity in caption for variety
+        cap_caption = f"{label} – holds approx. {cap} people"
         cur.execute(
-            "INSERT INTO Stage (name,capacity,image,caption) VALUES (%s,%s,%s,%s)",
-            (label, CAPACITY, "https://placehold.co/600x400", label)
+            "INSERT INTO Stage (name, capacity, image, caption) VALUES (%s, %s, %s, %s)",
+            (label, cap, img, cap_caption)
         )
         sid = cur.lastrowid
         if idx == 1:
             stage_of_year[yr] = sid
-        for eq in equip_ids:
+
+        # assign each stage a random subset of equipment (2–all items)
+        eq_sample = random.sample(equip_ids, random.randint(2, len(equip_ids)))
+        for eq in eq_sample:
             cur.execute(
-                "INSERT INTO Stage_Equipment (stage_id,equip_id) VALUES (%s,%s)",
+                "INSERT INTO Stage_Equipment (stage_id, equip_id) VALUES (%s, %s)",
                 (sid, eq)
             )
 
@@ -216,33 +237,113 @@ print("→ locations & festivals")
 for t in ("Festival", "Location"):
     reset_table(t)
 
+# Cities per continent with base coordinates
 cities = [
-    ("Athens","GR","Europe"), ("Austin","US","North America"),
-    ("Tokyo","JP","Asia"),   ("Berlin","DE","Europe"),
-    ("São Paulo","BR","South America"), ("Cape Town","ZA","Africa"),
-    ("Melbourne","AU","Oceania")
+    ("Athens",     "GR", "Europe",        37.983800,  23.727500),
+    ("Berlin",     "DE", "Europe",        52.520000,  13.405000),
+    ("Austin",     "US", "North America", 30.267200, -97.743100),
+    ("Tokyo",      "JP", "Asia",          35.689500, 139.691700),
+    ("São Paulo",  "BR", "South America", -23.550500, -46.633300),
+    ("Cape Town",  "ZA", "Africa",        -33.924900,  18.424100),
+    ("Melbourne",  "AU", "Oceania",       -37.813600, 144.963100),
 ]
 
-loc_of_year, days_of_year = {}, {}
-for i, yr in enumerate(range(EARLIEST, LATEST + 1)):
-    city, cc, cont = random.choice(cities)
-    cur.execute("""INSERT INTO Location
-                        (street_name,street_number,zip_code,city,country,
-                    continent_id,latitude,longitude,image,caption)
-                    VALUES ('Main','1',%s,%s,%s,%s,0,0,
-                            'https://placehold.co/600x400',%s)""",
-                (f"{10000+i}", city, cc, continent_id[cont], f"Venue in {city}"))
+# Randomize years to assign each continent first
+years = list(range(EARLIEST, LATEST + 1))
+random.shuffle(years)
+
+loc_of_year: Dict[int, int] = {}
+days_of_year: Dict[int, List[date]] = {}
+used = set()
+
+# 1) First 7 years: one unique city per continent
+for i in range(min(7, len(years))):
+    city, cc, cont, base_lat, base_lon = cities[i]
+    zip_code = f"{10000 + i}"
+    # no jitter for first appearance
+    lat = base_lat
+    lon = base_lon
+    caption = f"Venue in {city}"
+
+    yr = years[i]
+    # insert Location
+    cur.execute(
+        """INSERT INTO Location
+              (street_name, street_number, zip_code, city, country,
+               continent_id, latitude, longitude, image, caption)
+           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+        (
+            "Main", "1", zip_code, city, cc,
+            continent_id[cont], lat, lon,
+            "https://placehold.co/600x400", caption
+        )
+    )
     loc_of_year[yr] = cur.lastrowid
+    used.add((city, cc))
 
+    # compute days for this festival
     day_cnt = random.randint(MIN_EVT, MAX_EVT)
-    start   = date(yr,3,1) if yr == TODAY.year else date(yr,7,1)
-    days_of_year[yr] = [start + timedelta(d) for d in range(day_cnt)]
+    start = date(yr, 3, 1) if yr == TODAY.year else date(yr, 7, 1)
+    days = [start + timedelta(d) for d in range(day_cnt)]
+    days_of_year[yr] = days
 
-    cur.execute("""INSERT INTO Festival
-                    (fest_year,name,start_date,end_date,image,caption,loc_id)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s)""",
-                (yr, f"Pulse {yr}", days_of_year[yr][0], days_of_year[yr][-1],
-                    "https://placehold.co/600x400", f"Pulse {yr}", loc_of_year[yr]))
+    # insert Festival
+    cur.execute(
+        """INSERT INTO Festival
+             (fest_year, name, start_date, end_date, image, caption, loc_id)
+           VALUES (%s,%s,%s,%s,%s,%s,%s)""",
+        (
+            yr, f"Pulse {yr}", days[0], days[-1],
+            "https://placehold.co/600x400", f"Pulse {yr}", loc_of_year[yr]
+        )
+    )
+
+# 2) Remaining years: random city with small lat/lon jitter, avoid repeats
+remaining = [yr for yr in years if yr not in loc_of_year]
+for i, yr in enumerate(remaining):
+    # pick unused or allow reuse occasionally
+    while True:
+        city, cc, cont, base_lat, base_lon = random.choice(cities)
+        if (city, cc) not in used or random.random() < 0.25:
+            break
+
+    zip_code = f"{11000 + i}"
+    # jitter up to ±0.005 degrees and round to 6 decimal places
+    lat = round(base_lat + random.uniform(-0.005, 0.005), 6)
+    lon = round(base_lon + random.uniform(-0.005, 0.005), 6)
+    caption = f"Venue in {city}"
+
+    # insert Location
+    cur.execute(
+        """INSERT INTO Location
+              (street_name, street_number, zip_code, city, country,
+               continent_id, latitude, longitude, image, caption)
+           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+        (
+            "Main", "1", zip_code, city, cc,
+            continent_id[cont], lat, lon,
+            "https://placehold.co/600x400", caption
+        )
+    )
+    loc_of_year[yr] = cur.lastrowid
+    used.add((city, cc))
+
+    # compute days for this festival
+    day_cnt = random.randint(MIN_EVT, MAX_EVT)
+    start = date(yr, 3, 1) if yr == TODAY.year else date(yr, 7, 1)
+    days = [start + timedelta(d) for d in range(day_cnt)]
+    days_of_year[yr] = days
+
+    # insert Festival
+    cur.execute(
+        """INSERT INTO Festival
+             (fest_year, name, start_date, end_date, image, caption, loc_id)
+           VALUES (%s,%s,%s,%s,%s,%s,%s)""",
+        (
+            yr, f"Pulse {yr}", days[0], days[-1],
+            "https://placehold.co/600x400", f"Pulse {yr}", loc_of_year[yr]
+        )
+    )
 
 # ───────────────────────── 3. EVENTS
 print("→ events")
@@ -267,77 +368,150 @@ print("→ staff & assignments")
 for t in ("Works_On", "Staff"):
     reset_table(t)
 
-sec_ids, sup_ids = [], []
+# 1) Create security staff
+sec_ids: List[int] = []
 for n in range(N_SEC):
-    cur.execute("""INSERT INTO Staff
-                    (first_name,last_name,date_of_birth,role_id,
-                    experience_id,image,caption)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s)""",
-                (f"Sec{n}", "Guard", date(1980,1,1),
-                    role_id["security"], exp_id["experienced"],
-                    "https://placehold.co/600x400", "Security"))
+    cur.execute(
+        """INSERT INTO Staff
+             (first_name, last_name, date_of_birth, role_id,
+              experience_id, image, caption)
+           VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+        (
+            f"Sec{n}", "Guard", date(1980, 1, 1),
+            role_id["security"], exp_id["experienced"],
+            "https://placehold.co/600x400", "Security"
+        )
+    )
     sec_ids.append(cur.lastrowid)
+
+# 2) Create support staff
+sup_ids: List[int] = []
 for n in range(N_SUP):
-    cur.execute("""INSERT INTO Staff
-                    (first_name,last_name,date_of_birth,role_id,
-                    experience_id,image,caption)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s)""",
-                (f"Sup{n}", "Crew", date(1985,1,1),
-                    role_id["support"], exp_id["intermediate"],
-                    "https://placehold.co/600x400", "Support"))
+    cur.execute(
+        """INSERT INTO Staff
+             (first_name, last_name, date_of_birth, role_id,
+              experience_id, image, caption)
+           VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+        (
+            f"Sup{n}", "Crew", date(1985, 1, 1),
+            role_id["support"], exp_id["intermediate"],
+            "https://placehold.co/600x400", "Support"
+        )
+    )
     sup_ids.append(cur.lastrowid)
+
+# 3) Create variety of other staff roles
+other_ids: List[int] = []
+other_roles = [r for r in role_id if r not in ("security", "support")]
+# create 5 staff per other role, with random age and experience
+for role_name in other_roles:
+    for n in range(5):
+        dob_year = random.randint(1970, 2000)
+        dob = date(dob_year, random.randint(1,12), random.randint(1,28))
+        exp = random.choice(list(exp_id.values()))
+        caption = role_name.title()
+        cur.execute(
+            """INSERT INTO Staff
+                 (first_name, last_name, date_of_birth, role_id,
+                  experience_id, image, caption)
+               VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+            (
+                f"{role_name.replace(' ', '')}{n}", "Staff",
+                dob, role_id[role_name], exp,
+                "https://placehold.co/600x400", caption
+            )
+        )
+        other_ids.append(cur.lastrowid)
+
+# 4) Assign staff to events
 for ev in event_of_day.values():
+    # always assign minimum security and support
     for sid in sec_ids[:SEC_PER_EVENT]:
-        cur.execute("INSERT INTO Works_On (staff_id,event_id) VALUES (%s,%s)", (sid, ev))
+        cur.execute(
+            "INSERT INTO Works_On (staff_id, event_id) VALUES (%s, %s)",
+            (sid, ev)
+        )
     for sid in sup_ids[:SUP_PER_EVENT]:
-        cur.execute("INSERT INTO Works_On (staff_id,event_id) VALUES (%s,%s)", (sid, ev))
+        cur.execute(
+            "INSERT INTO Works_On (staff_id, event_id) VALUES (%s, %s)",
+            (sid, ev)
+        )
+
+    # assign ~80% of other staff randomly
+    count_other = math.ceil(len(other_ids) * 0.8)
+    for sid in random.sample(other_ids, count_other):
+        cur.execute(
+            "INSERT INTO Works_On (staff_id, event_id) VALUES (%s, %s)",
+            (sid, ev)
+        )
 
 # ───────────────────────── 5. ARTISTS & BANDS
 print("→ artists & bands")
-for t in ("Performance_Artist","Performance_Band","Band_Member",
-            "Artist_SubGenre","Artist_Genre",
-            "Band_SubGenre","Band_Genre","Band","Artist"):
+for t in ("Performance_Artist", "Performance_Band", "Band_Member",
+          "Artist_SubGenre", "Artist_Genre",
+          "Band_SubGenre", "Band_Genre", "Band", "Artist"):
     reset_table(t)
 
 artist_ids, all_gen = [], list(genre_id.keys())
-def pick_gen(i): return ["Rock","Pop"] if i % 5 == 0 else random.sample(all_gen, 2)
+def pick_gen(i): return ["Rock", "Pop"] if i % 5 == 0 else random.sample(all_gen, 2)
 
+# ─── Age Distribution Control: 65% < 30 years, 35% ≥ 30 years ───
+YOUNG_RATIO = 0.65
+young_cutoff = date.today().replace(year=date.today().year - 30)
+num_young = int(N_ART * YOUNG_RATIO)
+num_older = N_ART - num_young
+
+def random_birthdate(young=True):
+    # Generate a date of birth for young or older artist
+    if young:
+        start = young_cutoff
+        end = date.today() - timedelta(days=365 * 18)  # at least 18 years old
+    else:
+        start = date(1950, 1, 1)
+        end = young_cutoff - timedelta(days=1)
+    delta = end.toordinal() - start.toordinal()
+    return date.fromordinal(start.toordinal() + random.randint(0, delta))
+
+# ─── Insert Artists ───
 for i in range(N_ART):
+    is_young = i < num_young  # First 65% will be < 30
+    dob = random_birthdate(young=is_young)
     cur.execute("""INSERT INTO Artist
-                    (first_name,last_name,date_of_birth,
-                    webpage,instagram,image,caption)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s)""",
-                (f"Artist{i}", "Lastname", date(1990,1,1),
-                    "https://example.com", f"@artist{i}",
-                    "https://placehold.co/600x400", "Performer"))
+                    (first_name, last_name, date_of_birth,
+                     webpage, instagram, image, caption)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                (f"Artist{i}", "Lastname", dob,
+                 "https://example.com", f"@artist{i}",
+                 "https://placehold.co/600x400", "Performer"))
     aid = cur.lastrowid
     artist_ids.append(aid)
     for g in pick_gen(i):
-        cur.execute("INSERT INTO Artist_Genre (artist_id,genre_id) VALUES (%s,%s)",
+        cur.execute("INSERT INTO Artist_Genre (artist_id, genre_id) VALUES (%s, %s)",
                     (aid, genre_id[g]))
-        cur.execute("INSERT INTO Artist_SubGenre (artist_id,sub_genre_id) VALUES (%s,%s)",
+        cur.execute("INSERT INTO Artist_SubGenre (artist_id, sub_genre_id) VALUES (%s, %s)",
                     (aid, random.choice(sub_by_genre[genre_id[g]])))
 
+# ─── Insert Bands ───
 band_ids, pool = [], artist_ids[:]
 random.shuffle(pool)
 for b in range(N_BAND):
     cur.execute("""INSERT INTO Band
-                    (name,formation_date,
-                    webpage,instagram,image,caption)
-                    VALUES (%s,%s,%s,%s,%s,%s)""",
-                (f"Band{b}", date(2010,1,1),
-                    "https://example.com", f"@band{b}",
-                    "https://placehold.co/600x400", "Band"))
+                    (name, formation_date,
+                     webpage, instagram, image, caption)
+                   VALUES (%s, %s, %s, %s, %s, %s)""",
+                (f"Band{b}", date(2010, 1, 1),
+                 "https://example.com", f"@band{b}",
+                 "https://placehold.co/600x400", "Band"))
     bid = cur.lastrowid
     band_ids.append(bid)
-    members = [pool.pop() for _ in range(random.randint(2,4))]
+    members = [pool.pop() for _ in range(random.randint(2, 4))]
     for m in members:
-        cur.execute("INSERT INTO Band_Member (band_id,artist_id) VALUES (%s,%s)", (bid, m))
-    cur.execute("SELECT genre_id FROM Artist_Genre WHERE artist_id=%s", (members[0],))
+        cur.execute("INSERT INTO Band_Member (band_id, artist_id) VALUES (%s, %s)", (bid, m))
+    cur.execute("SELECT genre_id FROM Artist_Genre WHERE artist_id = %s", (members[0],))
     for row in cur.fetchall():
         gid = row["genre_id"]
-        cur.execute("INSERT INTO Band_Genre (band_id,genre_id) VALUES (%s,%s)", (bid, gid))
-        cur.execute("INSERT INTO Band_SubGenre (band_id,sub_genre_id) VALUES (%s,%s)",
+        cur.execute("INSERT INTO Band_Genre (band_id, genre_id) VALUES (%s, %s)", (bid, gid))
+        cur.execute("INSERT INTO Band_SubGenre (band_id, sub_genre_id) VALUES (%s, %s)",
                     (bid, random.choice(sub_by_genre[gid])))
 
 # ───────────────────────── 6. PERFORMANCES (robust booking)
@@ -403,14 +577,14 @@ print("→ attendees, tickets, reviews")
 for t in ("Review", "Ticket", "Attendee"):
     reset_table(t)
 
-# fetch all ticket‑type ids and locate VIP
+# fetch all ticket-type ids and locate VIP
 cur.execute("SELECT type_id, name FROM Ticket_Type")
 type_rows = cur.fetchall()
 vip_type  = next(r["type_id"] for r in type_rows if r["name"].lower() == "vip")
 other_ids = [r["type_id"] for r in type_rows if r["type_id"] != vip_type]
 
 # create attendees
-attendees = []
+attendees: List[int] = []
 for i in range(N_ATT):
     cur.execute(
         "INSERT INTO Attendee (first_name, last_name, date_of_birth, email) "
@@ -423,7 +597,7 @@ special_a, special_b = attendees[:2]
 
 ean_num = 10**11
 def next_ean() -> int:
-    """Return a fresh EAN‑13 complying number each call."""
+    """Return a fresh EAN-13 complying number each call."""
     global ean_num
     ean_num += 1
     return ean13(ean_num)
@@ -441,28 +615,23 @@ for ev, perfs in perf_ids_of_event.items():
     cur.execute("SELECT attendee_id FROM Ticket WHERE event_id=%s", (ev,))
     bought = {r["attendee_id"] for r in cur.fetchall()}
 
-    # up to 80 new buyers (excl. first two special attendees)
+    # up to 80 new buyers (exclude the two specials)
     pool = [a for a in attendees[2:] if a not in bought]
     buyers = random.sample(pool, min(80, len(pool)))
 
-    cap       = CAPACITY
     vip_cap   = math.ceil(CAPACITY * 0.10)
-    gen_share = len(other_ids)               # equal probability among non‑VIP types
+    gen_share = len(other_ids)
 
     for idx, aid in enumerate(buyers):
-        # 10 % VIP cap, otherwise distribute evenly among remaining ticket types
-        if idx < vip_cap:
-            t_id = vip_type
-        else:
-            t_id = other_ids[(idx - vip_cap) % gen_share]
+        # enforce VIP cap
+        t_id = vip_type if idx < vip_cap else other_ids[(idx - vip_cap) % gen_share]
 
-        # choose appropriate status
-        if fy > TODAY.year:                         # future festival year
+        # choose status
+        if fy > TODAY.year:
             status = status_id["active"] if random.random() < 0.85 else status_id["on offer"]
-        else:                                       # current/past year
-            future_ev = is_future
+        else:
             status = (
-                status_id["active"] if future_ev
+                status_id["active"] if is_future
                 else (status_id["used"] if random.random() < 0.80 else status_id["unused"])
             )
 
@@ -470,9 +639,8 @@ for ev, perfs in perf_ids_of_event.items():
             cur.execute(
                 """INSERT INTO Ticket
                         (type_id, purchase_date, cost, method_id, ean_number,
-                            status_id, attendee_id, event_id)
-                    VALUES (%s,      %s,            %s,   %s,        %s,
-                            %s,       %s,           %s)""",
+                         status_id, attendee_id, event_id)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     t_id,
                     ev_start.date() - timedelta(days=30),
@@ -485,9 +653,34 @@ for ev, perfs in perf_ids_of_event.items():
                 ),
             )
         except MySQLError as e:
-            # ignore duplicate or capacity‑triggered skips
-            if getattr(e, "errno", None) not in (1062, 45000):
+            # ignore duplicate or trigger-raised errors (VIP cap ⇒ errno 1644)
+            if getattr(e, "errno", None) not in (1062, 1644):
                 raise
+
+    # generate reviews for each used‐ticket holder
+    cur.execute(
+        "SELECT attendee_id FROM Ticket WHERE event_id=%s AND status_id=%s",
+        (ev, status_id["used"])
+    )
+    used_holders = [r["attendee_id"] for r in cur.fetchall()]
+
+    for perf in perfs:
+        for att in used_holders:
+            # random chance to review (~70%)
+            if random.random() < 0.7:
+                scores = [random.randint(1,5) for _ in range(5)]
+                try:
+                    cur.execute(
+                        """INSERT INTO Review
+                             (interpretation, sound_and_visuals, stage_presence,
+                              organization, overall, attendee_id, perf_id)
+                           VALUES (%s,%s,%s,%s,%s,%s,%s)""",
+                        (*scores, att, perf)
+                    )
+                except MySQLError as e:
+                    # ignore duplicates or other trigger skips
+                    if getattr(e, "errno", None) != 1062:
+                        raise
 
 # ───────────────────────── 8. GUARANTEE GRADED QUERY COVERAGE
 print("→ guarantee graded query coverage")
@@ -656,7 +849,65 @@ for row in cur.fetchall():
                             pay_method["debit card"], next_ean(),
                             status_id["used"], att, ev))
         safe_insert_review(att, pid)
-        
+
+# 8.7 Q9: seed many attendees with >3 performances in a single year
+from collections import defaultdict
+
+# collect events per year
+events_by_year: Dict[int, List[int]] = defaultdict(list)
+for (yr, _), ev in event_of_day.items():
+    events_by_year[yr].append(ev)
+
+# choose 50 attendees (skip specials)
+q9_attendees = attendees[2:52]  # next 50 attendees
+for att in q9_attendees:
+    for yr, ev_list in events_by_year.items():
+        if len(ev_list) < 4:
+            continue  # need at least 4 events to seed
+        # pick 4 distinct events in this year
+        chosen = random.sample(ev_list, 4)
+        for ev in chosen:
+            # skip if ticket already exists
+            cur.execute("SELECT 1 FROM Ticket WHERE attendee_id=%s AND event_id=%s", (att, ev))
+            if cur.fetchone():
+                continue
+
+            # check event capacity
+            cur.execute("""
+                SELECT s.capacity, COUNT(*) AS sold
+                  FROM Event e
+                  JOIN Stage s ON e.stage_id = s.stage_id
+                  JOIN Ticket t ON t.event_id = e.event_id
+                 WHERE e.event_id = %s
+                 GROUP BY s.capacity
+            """, (ev,))
+            row = cur.fetchone()
+            if not row or row["sold"] >= row["capacity"]:
+                continue  # skip this event if full
+
+            # get event date for purchase logic
+            cur.execute("SELECT start_dt FROM Event WHERE event_id=%s", (ev,))
+            ev_date = cur.fetchone()["start_dt"].date()
+            purchase_date = ev_date - timedelta(days=1)
+
+            # insert used ticket so attendee counts for Q9
+            cur.execute("""INSERT INTO Ticket
+                            (type_id, purchase_date, cost, method_id, ean_number,
+                             status_id, attendee_id, event_id)
+                           VALUES (%s,      %s,            %s,   %s,        %s,
+                                   %s,       %s,           %s)""",
+                        (
+                            ticket_type["general"],
+                            purchase_date,
+                            100,
+                            pay_method["debit card"],
+                            next_ean(),
+                            status_id["used"],
+                            att,
+                            ev
+                        )
+            )
+
 # ───────────────────────── 9. RESALE QUEUES FOR FUTURE FESTIVALS ─────────────────────────
 print("→ resale queues for future festivals")
 
