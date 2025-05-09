@@ -73,7 +73,6 @@ As per the course specifications, we designed and implemented a **relational dat
 
 - **Automated Testing**:
   - `test_cli.sh`: Tests user commands and access control logic
-  - `test_triggers.sh`: Validates all 33 business rule triggers with summary stats
 
 - **Setup Instructions**:
   - Detailed installation steps are available in `cli/README.md` and `frontend/README.md`
