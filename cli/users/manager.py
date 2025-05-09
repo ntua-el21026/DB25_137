@@ -315,7 +315,7 @@ class UserManager:
     # ------------------------------------------------------------------------ #
     # 3. SQL FILE EXECUTION / DATA MANAGEMENT
     # ------------------------------------------------------------------------ #
-    def execute_sql_file(self, path: str | Path, *, database: str | None = None) -> None:
+    def execute_sql_file(self, path: str | Path, *, database: str | None = None, show_progress: bool = False) -> None:
         """
         Run every statement in a .sql file.
 
@@ -323,17 +323,18 @@ class UserManager:
         * Correctly buffers CREATE {PROCEDURE|FUNCTION|TRIGGER|EVENT} bodies even
         when they contain nested BEGIN … END blocks.
         * Splits ordinary DDL/DML on the terminating semicolon.
+        * Optionally displays a progress bar using Click.
         """
         sql_text = Path(path).read_text(encoding="utf-8")
 
-        # strip /* … */ comments first (newline‑friendly)
+        # Strip /* ... */ comments (multi-line)
         sql_text = re.sub(r"/\*.*?\*/", "\n", sql_text, flags=re.S)
 
         statements: list[str] = []
         buf: list[str] = []
 
-        depth = 0          # nesting depth of BEGIN/END
-        in_routine = False # inside CREATE PROC / FUNC / TRIGGER / EVENT
+        depth = 0
+        in_routine = False
 
         routine_start_re = re.compile(
             r"^\s*CREATE\s+(?:DEFINER\s*=\s*\S+\s+)?"
@@ -344,53 +345,43 @@ class UserManager:
         for raw in sql_text.splitlines():
             line = raw.rstrip()
 
-            # ignore -- / # full‑line comments
             if re.match(r"^\s*(--|#)", line):
                 continue
 
-            # ── Detect start of a stored routine ───────────────────────────────
             if not in_routine and routine_start_re.match(line):
                 in_routine = True
-                depth = 0                    # reset depth counter
+                depth = 0
 
-            # accumulate line
             buf.append(line)
 
-            # Track nesting only when we're inside a routine
             if in_routine:
-                # count BEGIN (but not BEGIN … END for handlers/loops keywords)
                 if re.search(r"\bBEGIN\b", line, re.I):
                     depth += 1
-                # END followed by ; closes one level
                 if re.search(r"\bEND\s*;\s*$", line, re.I):
                     depth -= 1
                     if depth == 0:
-                        # full routine captured
                         statements.append("\n".join(buf).strip())
                         buf.clear()
                         in_routine = False
                 continue
 
-            # ── Normal splitter outside routines ───────────────────────────────
             if line.endswith(";"):
-                # remove trailing semicolon
                 buf[-1] = buf[-1][:-1]
                 statements.append("\n".join(buf).strip())
                 buf.clear()
 
-        # leftover (no trailing ;) ?
         if buf:
             statements.append("\n".join(buf).strip())
 
-        # ------------------------------------------------------------------- #
-        # Execute collected statements (unchanged from original implementation)
-        # ------------------------------------------------------------------- #
+        # Execute statements (with optional progress bar)
         current_db = database
-        for stmt in statements:
+
+        def run_statement(stmt: str):
+            nonlocal current_db
             muse = re.match(r"^\s*USE\s+`?(\w+)`?\s*$", stmt, re.I)
             if muse:
                 current_db = muse.group(1)
-                continue
+                return
 
             params = self._dsn.copy()
             params["autocommit"] = True
@@ -408,6 +399,14 @@ class UserManager:
                     f"{stmt[:300]}...\n"
                     f"Error {err.errno}: {err.msg}"
                 )
+
+        if show_progress:
+            with click.progressbar(statements, label=f"Executing {path.name}") as bar:
+                for stmt in bar:
+                    run_statement(stmt)
+        else:
+            for stmt in statements:
+                run_statement(stmt)
 
     def truncate_tables(self, database: str) -> None:
         """

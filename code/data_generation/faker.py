@@ -22,10 +22,12 @@ from mysql.connector import Error as MySQLError, DatabaseError
 from dotenv import load_dotenv
 
 load_dotenv()
+from pathlib import Path
+cli_path = Path(__file__).resolve().parents[2] / "cli" / "db137.py"
 
 # ── Auto-run create-db from cli/db137.py ──
 try:
-    subprocess.run(["python3", "../../cli/db137.py", "create-db"], check=True)
+    subprocess.run([sys.executable, str(cli_path), "create-db"], check=True)
 except subprocess.CalledProcessError as e:
     print("Failed to run db137 create-db:", e)
     sys.exit(1)
@@ -771,8 +773,8 @@ from pathlib import Path
 try:
     # Run db137 db-status and capture its output
     result = subprocess.run(
-        ["python3", "../../cli/db137.py", "db-status"],
-        capture_output=True, text=True, check=True
+    [sys.executable, str(cli_path), "db-status"],
+    capture_output=True, text=True, check=True
     )
 
     out_lines = result.stdout.splitlines()
@@ -786,7 +788,11 @@ try:
 
     summary.append("-" * 35)
 
-    Path("../../docs/organization/db_data.txt").write_text("\n".join(summary) + "\n", encoding="utf-8")
+    output_dir = Path(__file__).resolve().parents[2] / "docs" / "organization"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    summary_path = output_dir / "db_data.txt"
+    summary_path.write_text("\n".join(summary) + "\n", encoding="utf-8")
+
     print("[OK] db_data.txt written.")
 
 except subprocess.CalledProcessError as e:

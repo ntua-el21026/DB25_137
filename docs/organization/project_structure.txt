@@ -1,7 +1,6 @@
 .
 ├── .envrc
 ├── .vscode
-├── DB Assignment 2024-2025.pdf
 ├── LICENSE
 ├── README.md
 ├── cli
@@ -18,7 +17,8 @@
 │   │   ├── fixeof.py
 │   │   └── qgen.py
 │   ├── data_generation
-│   │   └── faker.py
+│   │   ├── faker.py
+│   │   └── faker_sql.py
 │   ├── organization
 │   │   └── struct.py
 │   └── runall.py
@@ -94,8 +94,6 @@
 └── test
     ├── README.md
     ├── test_cli.sh
-    ├── test_cli_results.txt
-    ├── test_triggers.sh
-    └── test_triggers_results.txt
+    └── test_cli_results.txt
 
-22 directories, 76 files
+22 directories, 74 files

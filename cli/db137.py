@@ -22,7 +22,7 @@ users set-defaults    Grant typical privileges (SELECT, INSERT, .)
 DATABASE SETUP
 -------------------
 create-db             Create schema and deploy all SQL scripts
-load-db               Load synthetic data via faker in the database
+load-db               Load synthetic data via faker or load.sql in the database
 reset-db              Shortcut for drop-db + create-db + load-db
 erase-db              Truncate all tables (except lookup), preserving structure
 drop-db               Drop the entire schema
@@ -295,16 +295,43 @@ def drop_db(user_mgr: UserManager, database: str, yes: bool):
     click.echo(f"[OK] Schema `{database}` dropped.")
 
 @cli.command("load-db")
-@click.option("--faker", "faker_script", type=click.Path(exists=True),
-                default=str(FAKER_SCRIPT), show_default=True)
+@click.option("--g", "use_faker_sql", is_flag=True, help="Run faker_sql.py then load.sql")
+@click.option("--i", "use_faker_intelligent", is_flag=True, help="Run faker.py for full intelligent data")
 @click.option("--sql-dir", type=click.Path(exists=True, file_okay=False),
                 default=str(DEFAULT_SQL_DIR), show_default=True)
 @click.option("--database", default=DEFAULT_DB, show_default=True)
-@click.pass_obj
-def load_db(user_mgr: UserManager, faker_script: str, sql_dir: str, database: str):
+@click.pass_context
+def load_db(ctx, use_faker_sql: bool, use_faker_intelligent: bool,
+            sql_dir: str, database: str):
+
+    user_mgr = ctx.obj
     require_root(user_mgr)
-    subprocess.check_call([sys.executable, faker_script])
-    click.echo(f"[OK] Database loaded via faker.py.")
+
+    if use_faker_sql and use_faker_intelligent:
+        raise click.ClickException("Cannot use both --g and --i at the same time.")
+
+    if use_faker_sql:
+        script_path = PROJECT_ROOT / "code" / "data_generation" / "faker_sql.py"
+        subprocess.check_call([sys.executable, str(script_path)])
+        _print_ok("faker_sql.py executed.")
+
+        ctx.invoke(create_db, sql_dir=sql_dir, database=database)
+
+        load_path = Path(sql_dir) / "load.sql"
+        user_mgr.execute_sql_file(load_path, database=database, show_progress=True)
+        _print_ok("load.sql executed after faker_sql.py.")
+
+    elif use_faker_intelligent:
+        script_path = PROJECT_ROOT / "code" / "data_generation" / "faker.py"
+        subprocess.check_call([sys.executable, str(script_path)])
+        _print_ok("faker.py executed and database populated with intelligent data.")
+
+    else:
+        ctx.invoke(create_db, sql_dir=sql_dir, database=database)
+
+        load_path = Path(sql_dir) / "load.sql"
+        user_mgr.execute_sql_file(load_path, database=database, show_progress=True)
+        _print_ok("Database loaded from load.sql.")
 
 @cli.command("erase-db")
 @click.option("--database", default=DEFAULT_DB, show_default=True)
@@ -369,7 +396,7 @@ def reset(ctx):
 @click.option("--database", default=DEFAULT_DB, show_default=True)
 @click.pass_obj
 def viewq(user_mgr: UserManager, database: str):
-    """Display the contents of Resale_Match_Log as a formatted table."""
+
     with user_mgr._connect(database) as cnx, cnx.cursor() as cur:
         cur.execute("""
             SELECT match_id, match_type, ticket_id, offered_type_id, requested_type_id, buyer_id, seller_id, match_time

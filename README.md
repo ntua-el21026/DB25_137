@@ -50,7 +50,7 @@ As per the course specifications, we designed and implemented a **relational dat
   - Includes trace analysis and query plan tuning for Q4 and Q6
 
 - **Synthetic Data Generation**:
-  - `faker.py` creates a complete, constraint-compliant festival dataset
+  - `faker.py` (immediate data insertion) and `faker_sql.py` (query generation) create a complete, constraint-compliant festival dataset. In the second case, `load.sql` is used.
   - Designed to support all 15 graded queries with special-case data coverage
   - Generates realistic multi-year festival scenarios across diverse entities
 
