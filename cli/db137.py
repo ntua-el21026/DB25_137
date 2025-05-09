@@ -440,26 +440,28 @@ def register_q_command(q: int):
 for q in range(1, 16):
     register_q_command(q)
 
-# -------------------- QUERY RANGE COMMAND --------------------
-@cli.command("qX-to-qY")
-@argument("qrange", metavar="qX-to-qY", type=str)
-@click.option("--database", default=DEFAULT_DB, show_default=True)
-@click.pass_obj
-def qrange_cmd(user_mgr: UserManager, qrange: str, database: str):
+# -------------------- RANGE QUERY COMMANDS --------------------
+def register_qrange_command(start: int, end: int):
+    cmd_name = f"q{start}-to-q{end}"
 
-    match = re.fullmatch(r"q(\d+)-to-q(\d+)", qrange)
-    if not match:
-        raise click.ClickException("Expected format: q1-to-q4")
+    @cli.command(name=cmd_name)
+    @click.option("--database", default=DEFAULT_DB, show_default=True)
+    @click.pass_obj
+    def run_range(user_mgr: UserManager, database: str, s=start, e=end):
 
-    start, end = sorted((int(match[1]), int(match[2])))
-    for q in range(start, end + 1):
-        sql_path = QUERIES_DIR / f"Q{q}.sql"
-        out_path = QUERIES_DIR / f"Q{q}_out.txt"
-        if not sql_path.exists():
-            click.echo(f"[SKIP] Missing {sql_path.name}")
-            continue
-        user_mgr.run_query_to_file(sql_path, out_path, database=database)
-        _print_ok(f"{sql_path.name} → {out_path.name}")
+        for q in range(s, e + 1):
+            sql_path = QUERIES_DIR / f"Q{q}.sql"
+            out_path = QUERIES_DIR / f"Q{q}_out.txt"
+            if not sql_path.exists():
+                click.echo(f"[SKIP] Missing {sql_path.name}")
+                continue
+            user_mgr.run_query_to_file(sql_path, out_path, database=database)
+            _print_ok(f"{sql_path.name} → {out_path.name}")
+
+# Register q1-to-q2, ..., q14-to-q15
+for i in range(1, 16):
+    for j in range(i + 1, 16):
+        register_qrange_command(i, j)
 
 
 if __name__ == "__main__":
