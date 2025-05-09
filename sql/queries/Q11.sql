@@ -2,7 +2,7 @@
 
 WITH Max_Performer AS (
     SELECT MAX(performance_count) AS max_perf
-    FROM View_Artist_Performance
+    FROM View_Artist_Performance_Rating
 )
 SELECT
     artist_id,
