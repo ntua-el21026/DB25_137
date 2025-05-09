@@ -1,2 +1,83 @@
-# DB25_137
-GitHub Respository for the project of Databases (Spring 2025 - Team 137).
+# DB25_137 – Pulse University Festival Database Project
+
+This repository contains the complete implementation of the Pulse University Festival information system, developed as part of the **Databases course (Spring 2025, Team 137)** at the **School of Electrical and Computer Engineering, National Technical University of Athens (NTUA)**.
+
+---
+
+## Repository Structure
+
+```
+├── cli/               # Command-line interface for DB setup, user management, query execution
+├── code/              # Utility scripts for data generation, code hygiene, structure mapping
+├── diagrams/          # ER and relational schema diagrams
+├── docs/              # Report, assignment brief, indexing justification, structure notes
+├── frontend/          # React + Flask web interface with tabbed schema/query/CLI UI
+├── sql/               # Database DDL, views, procedures, triggers, and graded queries
+├── test/              # Automated testing of CLI and trigger functionality
+└── README.md          # This file
+```
+
+---
+
+## Assignment Summary
+
+As per the course specifications, we designed and implemented a **relational database system** to support all core operations of the Pulse University Festival, including:
+
+- **Festival logistics**: Locations, stages, performances, and equipment
+- **Artist and band management**: Scheduling rules, genre/subgenre consistency, and annual participation limits
+- **Ticketing system**: Sales, validation, and resale through FIFO queues
+- **Staff assignments**: Automatic enforcement of staffing ratios
+- **Visitor feedback**: Likert-based performance reviews and aggregate insights
+- **End-to-end system**: From ER design to SQL deployment, data generation, CLI tooling, and web-based management
+
+---
+
+## Key Features
+
+- **ER and Relational Design**:
+  - Complete conceptual and logical schema with enforced cardinality and participation constraints
+  - ER and relational diagrams provided in the `diagrams/` folder
+
+- **DDL and Constraints** (`sql/`):
+  - Schema includes foreign keys, unique constraints, and data validation via `CHECK`
+  - Extensive lookup tables for roles, genres, payment methods, and more
+  - Triggers enforce business logic such as resale rules, artist participation caps, and VIP limits
+  - Views and procedures support advanced query use cases and data maintenance
+
+- **Graded SQL Queries**:
+  - One script per query in `sql/queries/Qx.sql` with results in `Qx_out.txt`
+  - Indexed and optimized using `sql/indexing.sql`
+  - Includes trace analysis and query plan tuning for Q4 and Q6
+
+- **Synthetic Data Generation**:
+  - `faker.py` creates a complete, constraint-compliant festival dataset
+  - Designed to support all 15 graded queries with special-case data coverage
+  - Generates realistic multi-year festival scenarios across diverse entities
+
+- **Command-Line Interface** (`cli/db137.py`):
+  - Full database setup and reset:
+    - `create-db`, `drop-db`, `reset-db`, `load-db`, `erase-db`, `db-status`, `viewq`
+  - Role-based user management:
+    - `users register`, `grant`, `revoke`, `rename`, `passwd`, `list`, `drop`, `drop-all`, `whoami`, `set-defaults`
+  - Query execution with export support:
+    - `qX` and `qX-to-qY` batch runs with output saved to file
+
+- **Web Frontend**:
+  - Developed with React (Vite) and Flask backend
+  - Key features:
+    - **Login/Logout** with session-based role access
+    - **Schema Overview**: Inspect tables, views, triggers, and stored procedures
+    - **Browse Schema**: Preview table contents with export options (CSV, TXT)
+    - **Run Query**: Syntax-highlighted SQL editor with output viewer
+    - **Run CLI**: Execute authorized CLI commands with live-streamed output
+
+- **Automated Testing**:
+  - `test_cli.sh`: Tests user commands and access control logic
+  - `test_triggers.sh`: Validates all 33 business rule triggers with summary stats
+
+- **Setup Instructions**:
+  - Detailed installation steps are available in `cli/README.md` and `frontend/README.md`
+
+---
+
+© Team 137 – NTUA ECE | Databases, Spring 2025

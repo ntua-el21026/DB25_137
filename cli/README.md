@@ -8,7 +8,7 @@ A command-line interface for administering the Pulse University Festival databas
 
 ## 1. Requirements
 
-- Python 3.8+
+- Python 3.10 or newer
 - Packages:
 
 ```bash
