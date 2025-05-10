@@ -1,12 +1,12 @@
 staff_id  staff_name
 --------  ----------
-21        Sup0 Crew 
-22        Sup1 Crew 
-23        Sup2 Crew 
-24        Sup3 Crew 
-25        Sup4 Crew 
-26        Sup5 Crew 
-27        Sup6 Crew 
-28        Sup7 Crew 
-29        Sup8 Crew 
-30        Sup9 Crew 
+21        Sup0 Crew
+22        Sup1 Crew
+23        Sup2 Crew
+24        Sup3 Crew
+25        Sup4 Crew
+26        Sup5 Crew
+27        Sup6 Crew
+28        Sup7 Crew
+29        Sup8 Crew
+30        Sup9 Crew

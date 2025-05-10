@@ -427,18 +427,33 @@ def viewq(user_mgr: UserManager, database: str):
 @click.option("--database", default=DEFAULT_DB, show_default=True)
 @click.pass_obj
 def run_query(user_mgr: UserManager, start: int, end: int | None, database: str):
+    # 1. build exact list
+    if end is None:
+        query_ids = [start]
+    else:
+        if start > end:
+            click.echo("Start must be ≤ end", err=True)
+            return
+        query_ids = list(range(start, end + 1))
 
-    start_q = start
-    end_q = end if end is not None else start_q
-
-    for q in range(start_q, end_q + 1):
-        sql_path = QUERIES_DIR / f"Q{q}.sql"
-        out_path = QUERIES_DIR / f"Q{q}_out.txt"
+    # 2. single loop – the only one
+    for q in query_ids:
+        sql_path = QUERIES_DIR / f"Q{q:02d}.sql"
         if not sql_path.exists():
             click.echo(f"[SKIP] Missing {sql_path.name}")
             continue
-        user_mgr.run_query_to_file(sql_path, out_path, database=database)
-        _print_ok(f"{sql_path.name} → {out_path.name}")
+
+        if q in (4, 6):                                     # multi-plan
+            base = QUERIES_DIR / f"Q{q:02d}_plan"
+            user_mgr.run_multi_plan_query_to_files(sql_path, base,
+                                                   database=database)
+            _print_ok(f"{sql_path.name} → {base.name}1_out.txt, {base.name}2_out.txt")
+
+        else:                                               # normal
+            out_path = QUERIES_DIR / f"Q{q:02d}_out.txt"
+            user_mgr.run_query_to_file(sql_path, out_path,
+                                       database=database)
+            _print_ok(f"{sql_path.name} → {out_path.name}")
 
 
 if __name__ == "__main__":

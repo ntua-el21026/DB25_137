@@ -1,5 +1,5 @@
 genre_id1  genre_name_1  genre_id2  genre_name_2  artist_count
 ---------  ------------  ---------  ------------  ------------
-1          Rock          2          Pop           8           
-7          Reggae        8          Latin         4           
-1          Rock          5          Electronic    2           
+1          Rock          2          Pop           8
+7          Reggae        8          Latin         4
+1          Rock          5          Electronic    2

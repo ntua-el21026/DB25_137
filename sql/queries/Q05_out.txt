@@ -1,3 +1,3 @@
 artist_id  artist_name        age  performance_count
 ---------  -----------------  ---  -----------------
-26         Artist25 Lastname  19   32               
+26         Artist25 Lastname  19   32

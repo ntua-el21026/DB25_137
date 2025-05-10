@@ -1,6 +1,6 @@
 genre_id  genre_name  year1  year2  perf_count
 --------  ----------  -----  -----  ----------
-4         Hip Hop     2016   2017   7         
-4         Hip Hop     2025   2026   5         
-3         Jazz        2020   2021   12        
-9         Metal       2025   2026   6         
+4         Hip Hop     2016   2017   7
+4         Hip Hop     2025   2026   5
+3         Jazz        2020   2021   12
+9         Metal       2025   2026   6

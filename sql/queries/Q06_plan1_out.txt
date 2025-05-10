@@ -1,0 +1,1467 @@
+
+## PLAN 1 — RESULT ##
+event_id  event_title  avg_event_rating
+--------  -----------  ----------------
+26        2021 Day 5   2.6667
+57        2019 Day 2   3.0000
+
+## PLAN 1 — EXPLAIN ##
+id  select_type  table       partitions  type    possible_keys                                                                                       key           key_len  ref                               rows  filtered  Extra          
+--  -----------  ----------  ----------  ------  --------------------------------------------------------------------------------------------------  ------------  -------  --------------------------------  ----  --------  ---------------
+1   PRIMARY      <derived2>  NULL        ALL     NULL                                                                                                NULL          NULL     NULL                              206   100.0     NULL
+2   DERIVED      att         NULL        const   PRIMARY                                                                                             PRIMARY       4        const                             1     100.0     Using temporary
+2   DERIVED      t           NULL        ref     attendee_id,idx_ticket_event_date_payment,idx_ticket_attendee_event,idx_ticket_attendee_year_event  attendee_id   4        const                             2     100.0     Using index
+2   DERIVED      e           NULL        eq_ref  PRIMARY,uq_event_stage                                                                              PRIMARY       4        pulse_university.t.event_id       1     100.0     NULL
+2   DERIVED      p           NULL        ref     uq_event_seq,fk_perf_event_stage,idx_perf_event_type                                                uq_event_seq  4        pulse_university.t.event_id       103   100.0     Using index
+2   DERIVED      r           NULL        eq_ref  perf_id,idx_review_perf_io,idx_review_attendee_overall,idx_review_perf_attendee_overall             perf_id       8        pulse_university.p.perf_id,const  1     100.0     NULL
+
+## PLAN 1 — EXPLAIN ANALYZE ##
+EXPLAIN
+-------
+-> Table scan on View_Attendee_Event_Rating  (cost=2.5..2.5 rows=0) (actual time=0.0614..0.0617 rows=2 loops=1)
+    -> Materialize  (cost=0..0 rows=0) (actual time=0.0611..0.0611 rows=2 loops=1)
+        -> Table scan on <temporary>  (actual time=0.0524..0.0527 rows=2 loops=1)
+            -> Aggregate using temporary table  (actual time=0.0515..0.0515 rows=2 loops=1)
+                -> Nested loop left join  (cost=94.4 rows=206) (actual time=0.0138..0.0406 rows=8 loops=1)
+                    -> Nested loop inner join  (cost=22.3 rows=206) (actual time=0.0106..0.016 rows=8 loops=1)
+                        -> Nested loop inner join  (cost=1.15 rows=2) (actual time=0.00777..0.00969 rows=2 loops=1)
+                            -> Covering index lookup on t using attendee_id (attendee_id=69)  (cost=0.45 rows=2) (actual time=0.00416..0.00462 rows=2 loops=1)
+                            -> Single-row index lookup on e using PRIMARY (event_id=t.event_id)  (cost=0.3 rows=1) (actual time=0.00205..0.00207 rows=1 loops=2)
+                        -> Covering index lookup on p using uq_event_seq (event_id=t.event_id)  (cost=5.43 rows=103) (actual time=0.00189..0.00275 rows=4 loops=2)
+                    -> Single-row index lookup on r using perf_id (perf_id=p.perf_id, attendee_id=69)  (cost=0.25 rows=1) (actual time=0.00293..0.00295 rows=0.875 loops=8)
+
+
+## PLAN 1 — OPTIMIZER_TRACE ##
+TRACE
+-----
+{
+  "steps": [
+    {
+      "join_preparation": {
+        "select#": 1,
+        "steps": [
+          {
+            "join_preparation": {
+              "select#": 2,
+              "steps": [
+                {
+                  "expanded_query": "/* select#2 */ select `att`.`attendee_id` AS `attendee_id`,concat(`att`.`first_name`,' ',`att`.`last_name`) AS `attendee_name`,`e`.`event_id` AS `event_id`,`e`.`title` AS `event_title`,avg(`r`.`overall`) AS `avg_event_rating` from ((((`Ticket` `t` join `Event` `e` on((`t`.`event_id` = `e`.`event_id`))) join `Attendee` `att` on((`att`.`attendee_id` = `t`.`attendee_id`))) join `Performance` `p` on((`p`.`event_id` = `e`.`event_id`))) left join `Review` `r` on(((`r`.`perf_id` = `p`.`perf_id`) and (`r`.`attendee_id` = `att`.`attendee_id`)))) group by `att`.`attendee_id`,`attendee_name`,`e`.`event_id`,`e`.`title`"
+                }
+              ]
+            }
+          },
+          {
+            "view": {
+              "table": "`View_Attendee_Event_Rating`",
+              "select#": 2,
+              "materialized": true
+            }
+          },
+          {
+            "expanded_query": "/* select#1 */ select `View_Attendee_Event_Rating`.`event_id` AS `event_id`,`View_Attendee_Event_Rating`.`event_title` AS `event_title`,`View_Attendee_Event_Rating`.`avg_event_rating` AS `avg_event_rating` from `View_Attendee_Event_Rating` where (`View_Attendee_Event_Rating`.`attendee_id` = 69)"
+          },
+          {
+            "transformations_to_nested_joins": {
+              "transformations": [
+                "JOIN_condition_to_WHERE",
+                "parenthesis_removal"
+              ],
+              "expanded_query": "/* select#2 */ select `att`.`attendee_id` AS `attendee_id`,concat(`att`.`first_name`,' ',`att`.`last_name`) AS `attendee_name`,`e`.`event_id` AS `event_id`,`e`.`title` AS `event_title`,avg(`r`.`overall`) AS `avg_event_rating` from `Ticket` `t` join `Event` `e` join `Attendee` `att` join `Performance` `p` left join `Review` `r` on(((`r`.`perf_id` = `p`.`perf_id`) and (`r`.`attendee_id` = `att`.`attendee_id`))) where ((`p`.`event_id` = `e`.`event_id`) and (`att`.`attendee_id` = `t`.`attendee_id`) and (`t`.`event_id` = `e`.`event_id`)) group by `att`.`attendee_id`,`attendee_name`,`e`.`event_id`,`e`.`title`"
+            }
+          },
+          {
+            "condition_pushdown_to_derived": {
+              "table": "`View_Attendee_Event_Rating`",
+              "original_condition": "(`View_Attendee_Event_Rating`.`attendee_id` = 69)",
+              "condition_to_push": "(`View_Attendee_Event_Rating`.`attendee_id` = 69)",
+              "remaining_condition": null,
+              "pushdown_to_query_blocks": [
+                {
+                  "query_block": 2,
+                  "pushing_past_group_by": {
+                    "condition_to_push_to_having": null,
+                    "condition_to_push_to_where": "(`View_Attendee_Event_Rating`.`attendee_id` = 69)",
+                    "remaining_condition": null
+                  },
+                  "pushed_having_condition": null,
+                  "pushed_where_condition": "(`View_Attendee_Event_Rating`.`attendee_id` = 69)",
+                  "remaining_condition": null
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "join_optimization": {
+        "select#": 1,
+        "steps": [
+          {
+            "join_optimization": {
+              "select#": 2,
+              "steps": [
+                {
+                  "condition_processing": {
+                    "condition": "WHERE",
+                    "original_condition": "((`p`.`event_id` = `e`.`event_id`) and (`att`.`attendee_id` = `t`.`attendee_id`) and (`t`.`event_id` = `e`.`event_id`) and (`att`.`attendee_id` = 69))",
+                    "steps": [
+                      {
+                        "transformation": "equality_propagation",
+                        "resulting_condition": "(multiple equal(`p`.`event_id`, `e`.`event_id`, `t`.`event_id`) and multiple equal(69, `att`.`attendee_id`, `t`.`attendee_id`))"
+                      },
+                      {
+                        "transformation": "constant_propagation",
+                        "resulting_condition": "(multiple equal(`p`.`event_id`, `e`.`event_id`, `t`.`event_id`) and multiple equal(69, `att`.`attendee_id`, `t`.`attendee_id`))"
+                      },
+                      {
+                        "transformation": "trivial_condition_removal",
+                        "resulting_condition": "(multiple equal(`p`.`event_id`, `e`.`event_id`, `t`.`event_id`) and multiple equal(69, `att`.`attendee_id`, `t`.`attendee_id`))"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "substitute_generated_columns": {
+                  }
+                },
+                {
+                  "table_dependencies": [
+                    {
+                      "table": "`Ticket` `t`",
+                      "row_may_be_null": false,
+                      "map_bit": 0,
+                      "depends_on_map_bits": [
+                      ]
+                    },
+                    {
+                      "table": "`Event` `e`",
+                      "row_may_be_null": false,
+                      "map_bit": 1,
+                      "depends_on_map_bits": [
+                      ]
+                    },
+                    {
+                      "table": "`Attendee` `att`",
+                      "row_may_be_null": false,
+                      "map_bit": 2,
+                      "depends_on_map_bits": [
+                      ]
+                    },
+                    {
+                      "table": "`Performance` `p`",
+                      "row_may_be_null": false,
+                      "map_bit": 3,
+                      "depends_on_map_bits": [
+                      ]
+                    },
+                    {
+                      "table": "`Review` `r`",
+                      "row_may_be_null": true,
+                      "map_bit": 4,
+                      "depends_on_map_bits": [
+                        2,
+                        3
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "ref_optimizer_key_uses": [
+                    {
+                      "table": "`Ticket` `t`",
+                      "field": "attendee_id",
+                      "equals": "69",
+                      "null_rejecting": true
+                    },
+                    {
+                      "table": "`Ticket` `t`",
+                      "field": "event_id",
+                      "equals": "`p`.`event_id`",
+                      "null_rejecting": true
+                    },
+                    {
+                      "table": "`Ticket` `t`",
+                      "field": "event_id",
+                      "equals": "`e`.`event_id`",
+                      "null_rejecting": true
+                    },
+                    {
+                      "table": "`Ticket` `t`",
+                      "field": "event_id",
+                      "equals": "`p`.`event_id`",
+                      "null_rejecting": true
+                    },
+                    {
+                      "table": "`Ticket` `t`",
+                      "field": "event_id",
+                      "equals": "`e`.`event_id`",
+                      "null_rejecting": true
+                    },
+                    {
+                      "table": "`Ticket` `t`",
+                      "field": "attendee_id",
+                      "equals": "69",
+                      "null_rejecting": true
+                    },
+                    {
+                      "table": "`Ticket` `t`",
+                      "field": "event_id",
+                      "equals": "`p`.`event_id`",
+                      "null_rejecting": true
+                    },
+                    {
+                      "table": "`Ticket` `t`",
+                      "field": "event_id",
+                      "equals": "`e`.`event_id`",
+                      "null_rejecting": true
+                    },
+                    {
+                      "table": "`Ticket` `t`",
+                      "field": "attendee_id",
+                      "equals": "69",
+                      "null_rejecting": true
+                    },
+                    {
+                      "table": "`Event` `e`",
+                      "field": "event_id",
+                      "equals": "`p`.`event_id`",
+                      "null_rejecting": true
+                    },
+                    {
+                      "table": "`Event` `e`",
+                      "field": "event_id",
+                      "equals": "`t`.`event_id`",
+                      "null_rejecting": true
+                    },
+                    {
+                      "table": "`Event` `e`",
+                      "field": "event_id",
+                      "equals": "`p`.`event_id`",
+                      "null_rejecting": true
+                    },
+                    {
+                      "table": "`Event` `e`",
+                      "field": "event_id",
+                      "equals": "`t`.`event_id`",
+                      "null_rejecting": true
+                    },
+                    {
+                      "table": "`Attendee` `att`",
+                      "field": "attendee_id",
+                      "equals": "69",
+                      "null_rejecting": true
+                    },
+                    {
+                      "table": "`Performance` `p`",
+                      "field": "event_id",
+                      "equals": "`e`.`event_id`",
+                      "null_rejecting": true
+                    },
+                    {
+                      "table": "`Performance` `p`",
+                      "field": "event_id",
+                      "equals": "`t`.`event_id`",
+                      "null_rejecting": true
+                    },
+                    {
+                      "table": "`Performance` `p`",
+                      "field": "event_id",
+                      "equals": "`e`.`event_id`",
+                      "null_rejecting": true
+                    },
+                    {
+                      "table": "`Performance` `p`",
+                      "field": "event_id",
+                      "equals": "`t`.`event_id`",
+                      "null_rejecting": true
+                    },
+                    {
+                      "table": "`Performance` `p`",
+                      "field": "event_id",
+                      "equals": "`e`.`event_id`",
+                      "null_rejecting": true
+                    },
+                    {
+                      "table": "`Performance` `p`",
+                      "field": "event_id",
+                      "equals": "`t`.`event_id`",
+                      "null_rejecting": true
+                    },
+                    {
+                      "table": "`Review` `r`",
+                      "field": "perf_id",
+                      "equals": "`p`.`perf_id`",
+                      "null_rejecting": true
+                    },
+                    {
+                      "table": "`Review` `r`",
+                      "field": "attendee_id",
+                      "equals": "69",
+                      "null_rejecting": true
+                    },
+                    {
+                      "table": "`Review` `r`",
+                      "field": "perf_id",
+                      "equals": "`p`.`perf_id`",
+                      "null_rejecting": true
+                    },
+                    {
+                      "table": "`Review` `r`",
+                      "field": "attendee_id",
+                      "equals": "69",
+                      "null_rejecting": true
+                    },
+                    {
+                      "table": "`Review` `r`",
+                      "field": "perf_id",
+                      "equals": "`p`.`perf_id`",
+                      "null_rejecting": true
+                    },
+                    {
+                      "table": "`Review` `r`",
+                      "field": "attendee_id",
+                      "equals": "69",
+                      "null_rejecting": true
+                    }
+                  ]
+                },
+                {
+                  "rows_estimation": [
+                    {
+                      "table": "`Ticket` `t`",
+                      "range_analysis": {
+                        "table_scan": {
+                          "rows": 6133,
+                          "cost": 622.15
+                        },
+                        "potential_range_indexes": [
+                          {
+                            "index": "PRIMARY",
+                            "usable": false,
+                            "cause": "not_applicable"
+                          },
+                          {
+                            "index": "ean_number",
+                            "usable": false,
+                            "cause": "not_applicable"
+                          },
+                          {
+                            "index": "attendee_id",
+                            "usable": true,
+                            "key_parts": [
+                              "attendee_id",
+                              "event_id"
+                            ]
+                          },
+                          {
+                            "index": "type_id",
+                            "usable": false,
+                            "cause": "not_applicable"
+                          },
+                          {
+                            "index": "status_id",
+                            "usable": false,
+                            "cause": "not_applicable"
+                          },
+                          {
+                            "index": "method_id",
+                            "usable": false,
+                            "cause": "not_applicable"
+                          },
+                          {
+                            "index": "idx_ticket_event_date_payment",
+                            "usable": false,
+                            "cause": "not_applicable"
+                          },
+                          {
+                            "index": "idx_ticket_attendee_event",
+                            "usable": true,
+                            "key_parts": [
+                              "attendee_id",
+                              "event_id",
+                              "ticket_id"
+                            ]
+                          },
+                          {
+                            "index": "idx_ticket_attendee_year_event",
+                            "usable": true,
+                            "key_parts": [
+                              "attendee_id",
+                              "purchase_date",
+                              "event_id",
+                              "ticket_id"
+                            ]
+                          }
+                        ],
+                        "best_covering_index_scan": {
+                          "index": "attendee_id",
+                          "cost": 615.795,
+                          "chosen": true
+                        },
+                        "setup_range_conditions": [
+                        ],
+                        "group_index_range": {
+                          "chosen": false,
+                          "cause": "not_single_table"
+                        },
+                        "skip_scan_range": {
+                          "chosen": false,
+                          "cause": "not_single_table"
+                        },
+                        "analyzing_range_alternatives": {
+                          "range_scan_alternatives": [
+                            {
+                              "index": "attendee_id",
+                              "ranges": [
+                                "attendee_id = 69"
+                              ],
+                              "index_dives_for_eq_ranges": true,
+                              "rowid_ordered": false,
+                              "using_mrr": false,
+                              "index_only": true,
+                              "in_memory": 1,
+                              "rows": 2,
+                              "cost": 0.460366,
+                              "chosen": true
+                            },
+                            {
+                              "index": "idx_ticket_attendee_event",
+                              "ranges": [
+                                "attendee_id = 69"
+                              ],
+                              "index_dives_for_eq_ranges": true,
+                              "rowid_ordered": false,
+                              "using_mrr": false,
+                              "index_only": true,
+                              "in_memory": 1,
+                              "rows": 2,
+                              "cost": 0.460366,
+                              "chosen": false,
+                              "cause": "cost"
+                            },
+                            {
+                              "index": "idx_ticket_attendee_year_event",
+                              "ranges": [
+                                "attendee_id = 69"
+                              ],
+                              "index_dives_for_eq_ranges": true,
+                              "rowid_ordered": false,
+                              "using_mrr": false,
+                              "index_only": true,
+                              "in_memory": 1,
+                              "rows": 2,
+                              "cost": 0.460457,
+                              "chosen": false,
+                              "cause": "cost"
+                            }
+                          ],
+                          "analyzing_roworder_intersect": {
+                            "usable": false,
+                            "cause": "too_few_roworder_scans"
+                          }
+                        },
+                        "chosen_range_access_summary": {
+                          "range_access_plan": {
+                            "type": "range_scan",
+                            "index": "attendee_id",
+                            "rows": 2,
+                            "ranges": [
+                              "attendee_id = 69"
+                            ]
+                          },
+                          "rows_for_plan": 2,
+                          "cost_for_plan": 0.460366,
+                          "chosen": true
+                        }
+                      }
+                    },
+                    {
+                      "table": "`Event` `e`",
+                      "table_scan": {
+                        "rows": 61,
+                        "cost": 0.25
+                      }
+                    },
+                    {
+                      "table": "`Attendee` `att`",
+                      "rows": 1,
+                      "cost": 1,
+                      "table_type": "const",
+                      "empty": false
+                    },
+                    {
+                      "table": "`Performance` `p`",
+                      "table_scan": {
+                        "rows": 278,
+                        "cost": 0.25
+                      }
+                    },
+                    {
+                      "table": "`Review` `r`",
+                      "range_analysis": {
+                        "table_scan": {
+                          "rows": 10429,
+                          "cost": 1052.25
+                        },
+                        "potential_range_indexes": [
+                          {
+                            "index": "PRIMARY",
+                            "usable": false,
+                            "cause": "not_applicable"
+                          },
+                          {
+                            "index": "perf_id",
+                            "usable": false,
+                            "cause": "not_applicable"
+                          },
+                          {
+                            "index": "idx_review_perf_io",
+                            "usable": false,
+                            "cause": "not_applicable"
+                          },
+                          {
+                            "index": "idx_review_attendee_overall",
+                            "usable": true,
+                            "key_parts": [
+                              "attendee_id",
+                              "overall",
+                              "review_id"
+                            ]
+                          },
+                          {
+                            "index": "idx_review_perf_attendee_overall",
+                            "usable": false,
+                            "cause": "not_applicable"
+                          }
+                        ],
+                        "best_covering_index_scan": {
+                          "index": "idx_review_perf_attendee_overall",
+                          "cost": 1047.28,
+                          "chosen": true
+                        },
+                        "setup_range_conditions": [
+                        ],
+                        "group_index_range": {
+                          "chosen": false,
+                          "cause": "not_single_table"
+                        },
+                        "skip_scan_range": {
+                          "chosen": false,
+                          "cause": "not_single_table"
+                        },
+                        "analyzing_range_alternatives": {
+                          "range_scan_alternatives": [
+                            {
+                              "index": "idx_review_attendee_overall",
+                              "ranges": [
+                                "attendee_id = 69"
+                              ],
+                              "index_dives_for_eq_ranges": true,
+                              "rowid_ordered": false,
+                              "using_mrr": false,
+                              "index_only": false,
+                              "in_memory": 1,
+                              "rows": 7,
+                              "cost": 2.71,
+                              "chosen": true
+                            }
+                          ],
+                          "analyzing_roworder_intersect": {
+                            "usable": false,
+                            "cause": "too_few_roworder_scans"
+                          }
+                        },
+                        "chosen_range_access_summary": {
+                          "range_access_plan": {
+                            "type": "range_scan",
+                            "index": "idx_review_attendee_overall",
+                            "rows": 7,
+                            "ranges": [
+                              "attendee_id = 69"
+                            ]
+                          },
+                          "rows_for_plan": 7,
+                          "cost_for_plan": 2.71,
+                          "chosen": true
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "considered_execution_plans": [
+                    {
+                      "plan_prefix": [
+                        "`Attendee` `att`"
+                      ],
+                      "table": "`Ticket` `t`",
+                      "best_access_path": {
+                        "considered_access_paths": [
+                          {
+                            "access_type": "ref",
+                            "index": "attendee_id",
+                            "rows": 2,
+                            "cost": 0.450366,
+                            "chosen": true
+                          },
+                          {
+                            "access_type": "ref",
+                            "index": "idx_ticket_event_date_payment",
+                            "usable": false,
+                            "chosen": false
+                          },
+                          {
+                            "access_type": "ref",
+                            "index": "idx_ticket_attendee_event",
+                            "rows": 2,
+                            "cost": 0.450366,
+                            "chosen": false
+                          },
+                          {
+                            "access_type": "ref",
+                            "index": "idx_ticket_attendee_year_event",
+                            "rows": 2,
+                            "cost": 0.450457,
+                            "chosen": false
+                          },
+                          {
+                            "access_type": "range",
+                            "range_details": {
+                              "used_index": "attendee_id"
+                            },
+                            "chosen": false,
+                            "cause": "heuristic_index_cheaper"
+                          }
+                        ]
+                      },
+                      "condition_filtering_pct": 100,
+                      "rows_for_plan": 2,
+                      "cost_for_plan": 0.450366,
+                      "rest_of_plan": [
+                        {
+                          "plan_prefix": [
+                            "`Attendee` `att`",
+                            "`Ticket` `t`"
+                          ],
+                          "table": "`Event` `e`",
+                          "best_access_path": {
+                            "considered_access_paths": [
+                              {
+                                "access_type": "eq_ref",
+                                "index": "PRIMARY",
+                                "rows": 1,
+                                "cost": 0.7,
+                                "chosen": true,
+                                "cause": "clustered_pk_chosen_by_heuristics"
+                              },
+                              {
+                                "rows_to_scan": 61,
+                                "filtering_effect": [
+                                ],
+                                "final_filtering_effect": 1,
+                                "access_type": "scan",
+                                "using_join_cache": true,
+                                "buffers_needed": 1,
+                                "resulting_rows": 61,
+                                "cost": 12.45,
+                                "chosen": false
+                              }
+                            ]
+                          },
+                          "condition_filtering_pct": 100,
+                          "rows_for_plan": 2,
+                          "cost_for_plan": 1.15037,
+                          "rest_of_plan": [
+                            {
+                              "plan_prefix": [
+                                "`Attendee` `att`",
+                                "`Ticket` `t`",
+                                "`Event` `e`"
+                              ],
+                              "table": "`Performance` `p`",
+                              "best_access_path": {
+                                "considered_access_paths": [
+                                  {
+                                    "access_type": "ref",
+                                    "index": "uq_event_seq",
+                                    "rows": 103,
+                                    "cost": 21.156,
+                                    "chosen": true
+                                  },
+                                  {
+                                    "access_type": "ref",
+                                    "index": "fk_perf_event_stage",
+                                    "rows": 103,
+                                    "cost": 21.1747,
+                                    "chosen": false
+                                  },
+                                  {
+                                    "access_type": "ref",
+                                    "index": "idx_perf_event_type",
+                                    "rows": 103,
+                                    "cost": 21.1747,
+                                    "chosen": false
+                                  },
+                                  {
+                                    "access_type": "scan",
+                                    "chosen": false,
+                                    "cause": "covering_index_better_than_full_scan"
+                                  }
+                                ]
+                              },
+                              "added_to_eq_ref_extension": false
+                            },
+                            {
+                              "plan_prefix": [
+                                "`Attendee` `att`",
+                                "`Ticket` `t`",
+                                "`Event` `e`"
+                              ],
+                              "table": "`Performance` `p`",
+                              "best_access_path": {
+                                "considered_access_paths": [
+                                  {
+                                    "access_type": "ref",
+                                    "index": "uq_event_seq",
+                                    "rows": 103,
+                                    "cost": 21.156,
+                                    "chosen": true
+                                  },
+                                  {
+                                    "access_type": "ref",
+                                    "index": "fk_perf_event_stage",
+                                    "rows": 103,
+                                    "cost": 21.1747,
+                                    "chosen": false
+                                  },
+                                  {
+                                    "access_type": "ref",
+                                    "index": "idx_perf_event_type",
+                                    "rows": 103,
+                                    "cost": 21.1747,
+                                    "chosen": false
+                                  },
+                                  {
+                                    "access_type": "scan",
+                                    "chosen": false,
+                                    "cause": "covering_index_better_than_full_scan"
+                                  }
+                                ]
+                              },
+                              "condition_filtering_pct": 100,
+                              "rows_for_plan": 206,
+                              "cost_for_plan": 22.3063,
+                              "rest_of_plan": [
+                                {
+                                  "plan_prefix": [
+                                    "`Attendee` `att`",
+                                    "`Ticket` `t`",
+                                    "`Event` `e`",
+                                    "`Performance` `p`"
+                                  ],
+                                  "table": "`Review` `r`",
+                                  "best_access_path": {
+                                    "considered_access_paths": [
+                                      {
+                                        "access_type": "eq_ref",
+                                        "index": "perf_id",
+                                        "rows": 1,
+                                        "cost": 72.1,
+                                        "chosen": true
+                                      },
+                                      {
+                                        "access_type": "ref",
+                                        "index": "idx_review_perf_io",
+                                        "chosen": false,
+                                        "cause": "heuristic_eqref_already_found"
+                                      },
+                                      {
+                                        "access_type": "ref",
+                                        "index": "idx_review_attendee_overall",
+                                        "chosen": false,
+                                        "cause": "heuristic_eqref_already_found"
+                                      },
+                                      {
+                                        "access_type": "ref",
+                                        "index": "idx_review_perf_attendee_overall",
+                                        "chosen": false,
+                                        "cause": "heuristic_eqref_already_found"
+                                      },
+                                      {
+                                        "rows_to_scan": 7,
+                                        "access_type": "range",
+                                        "range_details": {
+                                          "used_index": "idx_review_attendee_overall"
+                                        },
+                                        "resulting_rows": 7,
+                                        "cost": 702.46,
+                                        "chosen": false
+                                      }
+                                    ]
+                                  },
+                                  "condition_filtering_pct": 100,
+                                  "rows_for_plan": 206,
+                                  "cost_for_plan": 94.4063,
+                                  "chosen": true
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "plan_prefix": [
+                            "`Attendee` `att`",
+                            "`Ticket` `t`"
+                          ],
+                          "table": "`Performance` `p`",
+                          "best_access_path": {
+                            "considered_access_paths": [
+                              {
+                                "access_type": "ref",
+                                "index": "uq_event_seq",
+                                "rows": 103,
+                                "cost": 21.156,
+                                "chosen": true
+                              },
+                              {
+                                "access_type": "ref",
+                                "index": "fk_perf_event_stage",
+                                "rows": 103,
+                                "cost": 21.1747,
+                                "chosen": false
+                              },
+                              {
+                                "access_type": "ref",
+                                "index": "idx_perf_event_type",
+                                "rows": 103,
+                                "cost": 21.1747,
+                                "chosen": false
+                              },
+                              {
+                                "access_type": "scan",
+                                "chosen": false,
+                                "cause": "covering_index_better_than_full_scan"
+                              }
+                            ]
+                          },
+                          "condition_filtering_pct": 100,
+                          "rows_for_plan": 206,
+                          "cost_for_plan": 21.6063,
+                          "pruned_by_heuristic": true
+                        }
+                      ]
+                    },
+                    {
+                      "plan_prefix": [
+                        "`Attendee` `att`"
+                      ],
+                      "table": "`Event` `e`",
+                      "best_access_path": {
+                        "considered_access_paths": [
+                          {
+                            "access_type": "ref",
+                            "index": "PRIMARY",
+                            "usable": false,
+                            "chosen": false
+                          },
+                          {
+                            "access_type": "ref",
+                            "index": "uq_event_stage",
+                            "usable": false,
+                            "chosen": false
+                          },
+                          {
+                            "rows_to_scan": 61,
+                            "filtering_effect": [
+                            ],
+                            "final_filtering_effect": 1,
+                            "access_type": "scan",
+                            "resulting_rows": 61,
+                            "cost": 6.35,
+                            "chosen": true
+                          }
+                        ]
+                      },
+                      "condition_filtering_pct": 100,
+                      "rows_for_plan": 61,
+                      "cost_for_plan": 6.35,
+                      "rest_of_plan": [
+                        {
+                          "plan_prefix": [
+                            "`Attendee` `att`",
+                            "`Event` `e`"
+                          ],
+                          "table": "`Ticket` `t`",
+                          "best_access_path": {
+                            "considered_access_paths": [
+                              {
+                                "access_type": "eq_ref",
+                                "index": "attendee_id",
+                                "rows": 1,
+                                "cost": 21.35,
+                                "chosen": true
+                              },
+                              {
+                                "access_type": "ref",
+                                "index": "idx_ticket_event_date_payment",
+                                "chosen": false,
+                                "cause": "heuristic_eqref_already_found"
+                              },
+                              {
+                                "access_type": "ref",
+                                "index": "idx_ticket_attendee_event",
+                                "chosen": false,
+                                "cause": "heuristic_eqref_already_found"
+                              },
+                              {
+                                "access_type": "ref",
+                                "index": "idx_ticket_attendee_year_event",
+                                "chosen": false,
+                                "cause": "heuristic_eqref_already_found"
+                              },
+                              {
+                                "access_type": "range",
+                                "range_details": {
+                                  "used_index": "attendee_id"
+                                },
+                                "chosen": false,
+                                "cause": "heuristic_index_cheaper"
+                              }
+                            ]
+                          },
+                          "condition_filtering_pct": 100,
+                          "rows_for_plan": 61,
+                          "cost_for_plan": 27.7,
+                          "rest_of_plan": [
+                            {
+                              "plan_prefix": [
+                                "`Attendee` `att`",
+                                "`Event` `e`",
+                                "`Ticket` `t`"
+                              ],
+                              "table": "`Performance` `p`",
+                              "best_access_path": {
+                                "considered_access_paths": [
+                                  {
+                                    "access_type": "ref",
+                                    "index": "uq_event_seq",
+                                    "rows": 103,
+                                    "cost": 645.257,
+                                    "chosen": true
+                                  },
+                                  {
+                                    "access_type": "ref",
+                                    "index": "fk_perf_event_stage",
+                                    "rows": 103,
+                                    "cost": 645.827,
+                                    "chosen": false
+                                  },
+                                  {
+                                    "access_type": "ref",
+                                    "index": "idx_perf_event_type",
+                                    "rows": 103,
+                                    "cost": 645.827,
+                                    "chosen": false
+                                  },
+                                  {
+                                    "access_type": "scan",
+                                    "chosen": false,
+                                    "cause": "covering_index_better_than_full_scan"
+                                  }
+                                ]
+                              },
+                              "added_to_eq_ref_extension": false
+                            },
+                            {
+                              "plan_prefix": [
+                                "`Attendee` `att`",
+                                "`Event` `e`",
+                                "`Ticket` `t`"
+                              ],
+                              "table": "`Performance` `p`",
+                              "best_access_path": {
+                                "considered_access_paths": [
+                                  {
+                                    "access_type": "ref",
+                                    "index": "uq_event_seq",
+                                    "rows": 103,
+                                    "cost": 645.257,
+                                    "chosen": true
+                                  },
+                                  {
+                                    "access_type": "ref",
+                                    "index": "fk_perf_event_stage",
+                                    "rows": 103,
+                                    "cost": 645.827,
+                                    "chosen": false
+                                  },
+                                  {
+                                    "access_type": "ref",
+                                    "index": "idx_perf_event_type",
+                                    "rows": 103,
+                                    "cost": 645.827,
+                                    "chosen": false
+                                  },
+                                  {
+                                    "access_type": "scan",
+                                    "chosen": false,
+                                    "cause": "covering_index_better_than_full_scan"
+                                  }
+                                ]
+                              },
+                              "condition_filtering_pct": 100,
+                              "rows_for_plan": 6283,
+                              "cost_for_plan": 672.957,
+                              "pruned_by_cost": true
+                            }
+                          ]
+                        },
+                        {
+                          "plan_prefix": [
+                            "`Attendee` `att`",
+                            "`Event` `e`"
+                          ],
+                          "table": "`Performance` `p`",
+                          "best_access_path": {
+                            "considered_access_paths": [
+                              {
+                                "access_type": "ref",
+                                "index": "uq_event_seq",
+                                "rows": 103,
+                                "cost": 645.257,
+                                "chosen": true
+                              },
+                              {
+                                "access_type": "ref",
+                                "index": "fk_perf_event_stage",
+                                "rows": 103,
+                                "cost": 645.827,
+                                "chosen": false
+                              },
+                              {
+                                "access_type": "ref",
+                                "index": "idx_perf_event_type",
+                                "rows": 103,
+                                "cost": 645.827,
+                                "chosen": false
+                              },
+                              {
+                                "access_type": "scan",
+                                "chosen": false,
+                                "cause": "covering_index_better_than_full_scan"
+                              }
+                            ]
+                          },
+                          "condition_filtering_pct": 100,
+                          "rows_for_plan": 6283,
+                          "cost_for_plan": 651.607,
+                          "pruned_by_cost": true
+                        }
+                      ]
+                    },
+                    {
+                      "plan_prefix": [
+                        "`Attendee` `att`"
+                      ],
+                      "table": "`Performance` `p`",
+                      "best_access_path": {
+                        "considered_access_paths": [
+                          {
+                            "access_type": "ref",
+                            "index": "uq_event_seq",
+                            "usable": false,
+                            "chosen": false
+                          },
+                          {
+                            "access_type": "ref",
+                            "index": "fk_perf_event_stage",
+                            "usable": false,
+                            "chosen": false
+                          },
+                          {
+                            "access_type": "ref",
+                            "index": "idx_perf_event_type",
+                            "usable": false,
+                            "chosen": false
+                          },
+                          {
+                            "rows_to_scan": 278,
+                            "filtering_effect": [
+                            ],
+                            "final_filtering_effect": 1,
+                            "access_type": "scan",
+                            "resulting_rows": 278,
+                            "cost": 28.05,
+                            "chosen": true
+                          }
+                        ]
+                      },
+                      "condition_filtering_pct": 100,
+                      "rows_for_plan": 278,
+                      "cost_for_plan": 28.05,
+                      "rest_of_plan": [
+                        {
+                          "plan_prefix": [
+                            "`Attendee` `att`",
+                            "`Performance` `p`"
+                          ],
+                          "table": "`Ticket` `t`",
+                          "best_access_path": {
+                            "considered_access_paths": [
+                              {
+                                "access_type": "eq_ref",
+                                "index": "attendee_id",
+                                "rows": 1,
+                                "cost": 97.3,
+                                "chosen": true
+                              },
+                              {
+                                "access_type": "ref",
+                                "index": "idx_ticket_event_date_payment",
+                                "chosen": false,
+                                "cause": "heuristic_eqref_already_found"
+                              },
+                              {
+                                "access_type": "ref",
+                                "index": "idx_ticket_attendee_event",
+                                "chosen": false,
+                                "cause": "heuristic_eqref_already_found"
+                              },
+                              {
+                                "access_type": "ref",
+                                "index": "idx_ticket_attendee_year_event",
+                                "chosen": false,
+                                "cause": "heuristic_eqref_already_found"
+                              },
+                              {
+                                "access_type": "range",
+                                "range_details": {
+                                  "used_index": "attendee_id"
+                                },
+                                "chosen": false,
+                                "cause": "heuristic_index_cheaper"
+                              }
+                            ]
+                          },
+                          "condition_filtering_pct": 100,
+                          "rows_for_plan": 278,
+                          "cost_for_plan": 125.35,
+                          "pruned_by_cost": true
+                        },
+                        {
+                          "plan_prefix": [
+                            "`Attendee` `att`",
+                            "`Performance` `p`"
+                          ],
+                          "table": "`Event` `e`",
+                          "best_access_path": {
+                            "considered_access_paths": [
+                              {
+                                "access_type": "eq_ref",
+                                "index": "PRIMARY",
+                                "rows": 1,
+                                "cost": 97.3,
+                                "chosen": true,
+                                "cause": "clustered_pk_chosen_by_heuristics"
+                              },
+                              {
+                                "rows_to_scan": 61,
+                                "filtering_effect": [
+                                ],
+                                "final_filtering_effect": 1,
+                                "access_type": "scan",
+                                "using_join_cache": true,
+                                "buffers_needed": 1,
+                                "resulting_rows": 61,
+                                "cost": 1696.05,
+                                "chosen": false
+                              }
+                            ]
+                          },
+                          "condition_filtering_pct": 100,
+                          "rows_for_plan": 278,
+                          "cost_for_plan": 125.35,
+                          "pruned_by_cost": true
+                        },
+                        {
+                          "plan_prefix": [
+                            "`Attendee` `att`",
+                            "`Performance` `p`"
+                          ],
+                          "table": "`Review` `r`",
+                          "best_access_path": {
+                            "considered_access_paths": [
+                              {
+                                "access_type": "eq_ref",
+                                "index": "perf_id",
+                                "rows": 1,
+                                "cost": 97.3,
+                                "chosen": true
+                              },
+                              {
+                                "access_type": "ref",
+                                "index": "idx_review_perf_io",
+                                "chosen": false,
+                                "cause": "heuristic_eqref_already_found"
+                              },
+                              {
+                                "access_type": "ref",
+                                "index": "idx_review_attendee_overall",
+                                "chosen": false,
+                                "cause": "heuristic_eqref_already_found"
+                              },
+                              {
+                                "access_type": "ref",
+                                "index": "idx_review_perf_attendee_overall",
+                                "chosen": false,
+                                "cause": "heuristic_eqref_already_found"
+                              },
+                              {
+                                "rows_to_scan": 7,
+                                "access_type": "range",
+                                "range_details": {
+                                  "used_index": "idx_review_attendee_overall"
+                                },
+                                "resulting_rows": 7,
+                                "cost": 947.98,
+                                "chosen": false
+                              }
+                            ]
+                          },
+                          "condition_filtering_pct": 100,
+                          "rows_for_plan": 278,
+                          "cost_for_plan": 125.35,
+                          "pruned_by_cost": true
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "attaching_conditions_to_tables": {
+                    "original_condition": "((`t`.`attendee_id` = 69) and (`e`.`event_id` = `t`.`event_id`) and (`p`.`event_id` = `t`.`event_id`))",
+                    "attached_conditions_computation": [
+                    ],
+                    "attached_conditions_summary": [
+                      {
+                        "table": "`Ticket` `t`",
+                        "attached": "(`t`.`attendee_id` = 69)"
+                      },
+                      {
+                        "table": "`Event` `e`",
+                        "attached": "(`e`.`event_id` = `t`.`event_id`)"
+                      },
+                      {
+                        "table": "`Performance` `p`",
+                        "attached": "(`p`.`event_id` = `t`.`event_id`)"
+                      },
+                      {
+                        "table": "`Review` `r`",
+                        "attached": "<if>(is_not_null_compl(r), ((`r`.`attendee_id` = 69) and (`r`.`perf_id` = `p`.`perf_id`)), true)"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "optimizing_distinct_group_by_order_by": {
+                    "simplifying_group_by": {
+                      "original_clause": "'69',`attendee_name`,`e`.`event_id`,`e`.`title`",
+                      "items": [
+                        {
+                          "item": "'69'",
+                          "uses_only_constant_tables": true
+                        },
+                        {
+                          "item": "concat('Att68',' ','User')",
+                          "uses_only_constant_tables": true
+                        },
+                        {
+                          "item": "`e`.`event_id`"
+                        },
+                        {
+                          "item": "`e`.`title`"
+                        }
+                      ],
+                      "resulting_clause_is_simple": false,
+                      "resulting_clause": "`e`.`event_id`,`e`.`title`"
+                    }
+                  }
+                },
+                {
+                  "finalizing_table_conditions": [
+                    {
+                      "table": "`Ticket` `t`",
+                      "original_table_condition": "(`t`.`attendee_id` = 69)",
+                      "final_table_condition   ": null
+                    },
+                    {
+                      "table": "`Event` `e`",
+                      "original_table_condition": "(`e`.`event_id` = `t`.`event_id`)",
+                      "final_table_condition   ": null
+                    },
+                    {
+                      "table": "`Performance` `p`",
+                      "original_table_condition": "(`p`.`event_id` = `t`.`event_id`)",
+                      "final_table_condition   ": null
+                    },
+                    {
+                      "table": "`Review` `r`",
+                      "original_table_condition": "<if>(is_not_null_compl(r), ((`r`.`attendee_id` = 69) and (`r`.`perf_id` = `p`.`perf_id`)), true)",
+                      "final_table_condition   ": null
+                    }
+                  ]
+                },
+                {
+                  "refine_plan": [
+                    {
+                      "table": "`Ticket` `t`"
+                    },
+                    {
+                      "table": "`Event` `e`"
+                    },
+                    {
+                      "table": "`Performance` `p`"
+                    },
+                    {
+                      "table": "`Review` `r`"
+                    }
+                  ]
+                },
+                {
+                  "considering_tmp_tables": [
+                    {
+                      "adding_tmp_table_in_plan_at_position": 5,
+                      "write_method": "continuously_update_group_row"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "table_dependencies": [
+              {
+                "table": "`View_Attendee_Event_Rating`",
+                "row_may_be_null": false,
+                "map_bit": 0,
+                "depends_on_map_bits": [
+                ]
+              }
+            ]
+          },
+          {
+            "rows_estimation": [
+              {
+                "table": "`View_Attendee_Event_Rating`",
+                "table_scan": {
+                  "rows": 206,
+                  "cost": 5.075
+                }
+              }
+            ]
+          },
+          {
+            "considered_execution_plans": [
+              {
+                "plan_prefix": [
+                ],
+                "table": "`View_Attendee_Event_Rating`",
+                "best_access_path": {
+                  "considered_access_paths": [
+                    {
+                      "rows_to_scan": 206,
+                      "access_type": "scan",
+                      "resulting_rows": 206,
+                      "cost": 25.675,
+                      "chosen": true
+                    }
+                  ]
+                },
+                "condition_filtering_pct": 100,
+                "rows_for_plan": 206,
+                "cost_for_plan": 25.675,
+                "chosen": true
+              }
+            ]
+          },
+          {
+            "attaching_conditions_to_tables": {
+              "original_condition": null,
+              "attached_conditions_computation": [
+              ],
+              "attached_conditions_summary": [
+                {
+                  "table": "`View_Attendee_Event_Rating`",
+                  "attached": null
+                }
+              ]
+            }
+          },
+          {
+            "finalizing_table_conditions": [
+            ]
+          },
+          {
+            "refine_plan": [
+              {
+                "table": "`View_Attendee_Event_Rating`"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "join_execution": {
+        "select#": 1,
+        "steps": [
+          {
+            "creating_tmp_table": {
+              "tmp_table_info": {
+                "table": "`View_Attendee_Event_Rating`",
+                "in_plan_at_position": 0,
+                "columns": 5,
+                "row_length": 1841,
+                "key_length": 0,
+                "unique_constraint": false,
+                "makes_grouped_rows": false,
+                "cannot_insert_duplicates": false,
+                "location": "TempTable"
+              }
+            }
+          },
+          {
+            "materialize": {
+              "select#": 2,
+              "steps": [
+                {
+                  "temp_table_aggregate": {
+                    "select#": 2,
+                    "steps": [
+                      {
+                        "creating_tmp_table": {
+                          "tmp_table_info": {
+                            "table": "<temporary>",
+                            "in_plan_at_position": 5,
+                            "columns": 3,
+                            "row_length": 1048,
+                            "key_length": 1026,
+                            "unique_constraint": false,
+                            "makes_grouped_rows": true,
+                            "cannot_insert_duplicates": false,
+                            "location": "TempTable"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

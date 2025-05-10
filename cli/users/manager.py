@@ -121,8 +121,6 @@ class UserManager:
         except mysql.connector.Error as err:
             raise click.ClickException(f"[DB Error] {err}")
 
-    # ... rest of the methods unchanged ...
-
     @contextlib.contextmanager
     def _connect(self, database: str | None = None):
         dsn = self._dsn.copy()
@@ -438,7 +436,8 @@ class UserManager:
         out_path = Path(out_path).resolve()
 
         # --- Security check: only allow queries from inside expected directory ---
-        queries_root = Path(os.getenv("QUERIES_DIR", "sql/queries")).resolve()
+        default_root = Path(__file__).resolve().parents[2] / "sql/queries"
+        queries_root = Path(os.getenv("QUERIES_DIR", default_root)).resolve()
         if not str(sql_path).startswith(str(queries_root)):
             raise ValueError(f"Access denied: {sql_path} is outside allowed queries directory.")
 
@@ -453,25 +452,95 @@ class UserManager:
             columns = [desc[0] for desc in cur.description]
 
         with out_path.open("w", encoding="utf-8") as f:
-            if rows:
-                # Compute column widths
-                widths = [len(col) for col in columns]
-                for row in rows:
-                    for i, cell in enumerate(row):
-                        widths[i] = max(widths[i], len(str(cell)) if cell is not None else 4)
+            self._write_aligned(f, columns, rows)
 
-                # Write header
-                f.write("  ".join(col.ljust(widths[i]) for i, col in enumerate(columns)) + "\n")
-                f.write("  ".join("-" * widths[i] for i in range(len(columns))) + "\n")
+    # -------------------------------------------------------------------- #
+    #  NEW: helpers for multi-plan query bundles (4 stmts per plan)
+    # -------------------------------------------------------------------- #
+    _TRACE_LABELS = ("RESULT", "EXPLAIN", "EXPLAIN ANALYZE", "OPTIMIZER_TRACE")
 
-                # Write rows
-                for row in rows:
-                    f.write("  ".join(
-                        (str(cell) if cell is not None else "NULL").ljust(widths[i])
-                        for i, cell in enumerate(row)
-                    ) + "\n")
-            else:
-                f.write("(no rows)\n")
+    def _split_trace_plans(self, sql_text: str) -> list[list[str]]:
+        """
+        Break an 8-statement file into 2 bundles of 4 statements.
+        Every bundle has:  query, explain, explain analyse, optimizer_trace
+        """
+        raw_stmts = [s.strip() + ";" for s in re.split(r";\s*$", sql_text, flags=re.M) if s.strip()]
+        if len(raw_stmts) != 8 or len(raw_stmts) % 4:
+            raise click.ClickException("File must contain exactly 8 statements (2×4).")
+        return [raw_stmts[i:i + 4] for i in (0, 4)]
+
+    def _write_aligned(self, fp, columns, rows) -> None:
+        """
+        Pretty-print rows.  If there's >1 column, pad only *between* columns;
+        never pad after the last one.  If there's just 1 column, print it raw.
+        """
+        if not rows:
+            fp.write("(no rows)\n")
+            return
+
+        if len(columns) == 1:                   # ← plain dump, no padding
+            fp.write(f"{columns[0]}\n")
+            fp.write("-" * len(columns[0]) + "\n")
+            for r, in rows:
+                fp.write(f"{'' if r is None else r}\n")
+            return
+
+        # -- multi-column table (unchanged except for last-col rule) --------
+        widths = [len(c) for c in columns]
+        for row in rows:
+            for i, cell in enumerate(row):
+                widths[i] = max(widths[i], len(str(cell)) if cell is not None else 4)
+
+        # header + underline
+        fp.write("  ".join(col.ljust(widths[i]) for i, col in enumerate(columns)) + "\n")
+        fp.write("  ".join("-" * widths[i]          for i in range(len(columns))) + "\n")
+
+        # data rows – pad all but the last column
+        for row in rows:
+            line_parts = []
+            for i, cell in enumerate(row):
+                text = "NULL" if cell is None else str(cell)
+                line_parts.append(text.ljust(widths[i]) if i < len(columns) - 1 else text)
+            fp.write("  ".join(line_parts) + "\n")
+
+
+    def run_multi_plan_query_to_files(
+        self,
+        sql_path: str | Path,
+        out_prefix: str | Path,
+        *,
+        database: str,
+    ) -> None:
+        """
+        Execute the 2-plan SQL and emit
+            {prefix}1_out.txt   {prefix}2_out.txt
+        with RESULTS  + 3 trace blocks each.
+        """
+        sql_path = Path(sql_path).resolve()
+        sql_text = sql_path.read_text(encoding="utf-8")
+        bundles = self._split_trace_plans(sql_text)
+
+        params = self._dsn.copy()
+        params["database"] = database
+
+        for idx, bundle in enumerate(bundles, start=1):
+            out_path = Path(f"{out_prefix}{idx}_out.txt").resolve()
+            with mysql.connector.connect(**params) as cnx, \
+                 cnx.cursor() as cur, \
+                 out_path.open("w", encoding="utf-8") as f:
+
+                # enable trace once per session
+                cur.execute("SET optimizer_trace='enabled=on';")
+
+                for step, stmt in enumerate(bundle):
+                    cur.execute(stmt)
+                    rows   = cur.fetchall() if cur.with_rows else []
+                    cols   = cur.column_names if cur.with_rows else []
+                    label  = self._TRACE_LABELS[step]
+
+                    f.write(f"\n## PLAN {idx} — {label} ##\n")          # block header
+                    self._write_aligned(f, cols, rows)                  # pretty table
+
 
     def _execute_sql(self, stmt: str, params: dict | None = None) -> None:
         with self._connect() as cnx, cnx.cursor() as cur:

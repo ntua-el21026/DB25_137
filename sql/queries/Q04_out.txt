@@ -1,3 +1,0 @@
-artist_id  artist_name       avg_interpretation  avg_overall
----------  ----------------  ------------------  -----------
-1          Artist0 Lastname  3.0186              3.0836     

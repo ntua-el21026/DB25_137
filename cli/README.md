@@ -356,7 +356,7 @@ db137 <command>
 
 ### QUERIES
 
-- `q X` – Run one query (e.g., `Q1.sql → Q1_out.txt`):
+- `q X` – Run one query (e.g., `Q01.sql → Q01_out.txt`):
 
   **Required**:
   - `q X` (query number, e.g. `q 1`, `q 14`)

@@ -1,7 +1,7 @@
 attendee_id  attendee_name  artist_name        total_score
 -----------  -------------  -----------------  -----------
-1            Att0 User      Artist0 Lastname   85         
-1            Att0 User      Artist3 Lastname   80         
-2            Att1 User      Artist0 Lastname   25         
-2            Att1 User      Artist3 Lastname   25         
-1077         Att1076 User   Artist20 Lastname  23         
+1            Att0 User      Artist0 Lastname   85
+1            Att0 User      Artist3 Lastname   80
+2            Att1 User      Artist0 Lastname   25
+2            Att1 User      Artist3 Lastname   25
+1077         Att1076 User   Artist20 Lastname  23
