@@ -4,7 +4,7 @@ FROM View_Artist_Performance_Rating
 WHERE artist_id = 1;
 
 -- Analysis for simple query
-EXPLAIN FORMAT=JSON
+EXPLAIN
 SELECT artist_id, artist_name, avg_interpretation, avg_overall
 FROM View_Artist_Performance_Rating
 WHERE artist_id = 1;
@@ -24,7 +24,7 @@ WHERE a.artist_id = 1
 GROUP BY a.artist_id, artist_name;
 
 -- Analysis for alternative plan
-EXPLAIN FORMAT=JSON
+EXPLAIN
 SELECT 
     a.artist_id,
     CONCAT(a.first_name, ' ', a.last_name) AS artist_name,
