@@ -61,15 +61,27 @@ LEFT JOIN Performance_Band   pb ON pb.perf_id = p.perf_id;
  * View 4 – artist workload & average ratings (Q 4, 11)
  * ------------------------------------------------------------*/
 CREATE VIEW View_Artist_Performance_Rating AS
-SELECT  a.artist_id,
-        CONCAT(a.first_name,' ',a.last_name) AS artist_name,
-        COUNT(pa.perf_id)                    AS performance_count,
-        AVG(r.interpretation)                AS avg_interpretation,
-        AVG(r.overall)                       AS avg_overall
-FROM    Artist a
-LEFT JOIN Performance_Artist pa ON a.artist_id = pa.artist_id
-LEFT JOIN Review             r  ON pa.perf_id  = r.perf_id
-GROUP BY a.artist_id, artist_name;
+SELECT
+    a.artist_id,
+    CONCAT(a.first_name, ' ', a.last_name) AS artist_name,
+    (
+        SELECT COUNT(DISTINCT pa.perf_id)
+        FROM Performance_Artist pa
+        WHERE pa.artist_id = a.artist_id
+    ) AS performance_count,
+    (
+        SELECT AVG(r.interpretation)
+        FROM Performance_Artist pa
+        JOIN Review r ON pa.perf_id = r.perf_id
+        WHERE pa.artist_id = a.artist_id
+    ) AS avg_interpretation,
+    (
+        SELECT AVG(r.overall)
+        FROM Performance_Artist pa
+        JOIN Review r ON pa.perf_id = r.perf_id
+        WHERE pa.artist_id = a.artist_id
+    ) AS avg_overall
+FROM Artist a;
 
 /* ------------------------------------------------------------
  * View 5 – attendee’s watched performances & own rating (Q 6)
