@@ -514,13 +514,17 @@ for b in range(N_BAND):
         cur.execute("INSERT INTO Band_SubGenre (band_id, sub_genre_id) VALUES (%s, %s)",
                     (bid, random.choice(sub_by_genre[gid])))
 
-# ───────────────────────── 6. PERFORMANCES (robust booking)
+# ───────────────────────── 6. PERFORMANCES (robust booking + expanded warm-ups) ─────────────────────────
+from mysql.connector import Error as DatabaseError
+
 print("→ performances")
 reset_table("Performance")
+
+# Track each artist’s festival-year history (for the 3-year limit)
 appearances: Dict[int, List[int]] = {aid: [] for aid in artist_ids}
 perf_ids_of_event: Dict[int, List[int]] = {}
-warm_artist = artist_ids[0]
 
+# 6.1 – regular booking (80% band / 20% solo)
 for (yr, day), ev in event_of_day.items():
     n = random.randint(MIN_PERF, MAX_PERF)
     perf_ids_of_event[ev] = []
@@ -528,21 +532,18 @@ for (yr, day), ev in event_of_day.items():
         pid = add_perf(ev, day, seq, n)
         perf_ids_of_event[ev].append(pid)
 
-        # warm-ups: Artist #0 opens first 3 days of 2024
-        if yr == 2024 and seq == 1 and (day - days_of_year[yr][0]).days < 3:
-            safe_insert_artist(pid, warm_artist, yr)
+        # leave slot 1 alone for later warm-ups
+        if seq == 1:
             continue
 
-        booked = False
-        # 80% band, 20% solo
+        # try booking a band (80%)
         if random.random() < 0.80:
             for _ in range(30):
                 bid = random.choice(band_ids)
-                cur.execute("SELECT artist_id FROM Band_Member WHERE band_id = %s", (bid,))
+                cur.execute("SELECT artist_id FROM Band_Member WHERE band_id=%s", (bid,))
                 members = [r["artist_id"] for r in cur.fetchall()]
                 if not all(ok_seq(appearances[m], yr) for m in members):
                     continue
-                cur.execute("SAVEPOINT sp_band")
                 try:
                     cur.execute(
                         "INSERT INTO Performance_Band (perf_id, band_id) VALUES (%s, %s)",
@@ -550,27 +551,59 @@ for (yr, day), ev in event_of_day.items():
                     )
                     for m in members:
                         appearances[m].append(yr)
-                    booked = True
                     break
                 except DatabaseError as e:
-                    if getattr(e, "errno", None) == 1644:
-                        cur.execute("ROLLBACK TO sp_band")
+                    if e.errno == 1644:  # staffing / overlap trigger
                         continue
-                    cur.execute("ROLLBACK TO sp_band")
                     raise
-        if booked:
             continue
 
-        # solo booking: try up to 100 artists
+        # fallback: solo
         for _ in range(100):
             aid = random.choice(artist_ids)
             if not ok_seq(appearances[aid], yr):
                 continue
-            cur.execute("SAVEPOINT sp_solo")
-            if safe_insert_artist(pid, aid, yr):
+            try:
+                cur.execute(
+                    "INSERT INTO Performance_Artist (perf_id, artist_id) VALUES (%s, %s)",
+                    (pid, aid)
+                )
+                appearances[aid].append(yr)
                 break
+            except DatabaseError as e:
+                if e.errno in (1062, 1644):  # duplicate or trigger
+                    continue
+                raise
+
+# 6.2 – expanded Q3 warm-up seeding: 4 days × 8 artists × each year
+for yr in sorted(days_of_year.keys()):
+    days = days_of_year[yr][:4]                          # first 4 days
+    artists_for_year = random.sample(artist_ids, min(8, len(artist_ids)))
+    for artist in artists_for_year:
+        for day in days:
+            ev = event_of_day[(yr, day)]
+            # find or create the slot-1 performance
+            cur.execute(
+                "SELECT perf_id FROM Performance WHERE event_id=%s AND sequence_number=1",
+                (ev,),
+            )
+            row = cur.fetchone()
+            if row:
+                pid = row["perf_id"]
             else:
-                cur.execute("ROLLBACK TO sp_solo")
+                pid = add_perf(ev, day, 1, MAX_PERF)
+
+            # insert the warm-up artist
+            try:
+                cur.execute(
+                    "INSERT INTO Performance_Artist (perf_id, artist_id) VALUES (%s, %s)",
+                    (pid, artist),
+                )
+                appearances[artist].append(yr)
+            except DatabaseError as e:
+                # ignore duplicate or 3-year-limit errors
+                if e.errno not in (1062, 1644):
+                    raise
 
 # ───────────────────────── 7. ATTENDEES • TICKETS • REVIEWS
 print("→ attendees, tickets, reviews")
@@ -908,58 +941,97 @@ for att in q9_attendees:
                         )
             )
 
+# ───────────────────────── 8.8 Q3 FALLBACK CHECK
+
+for year in sorted(days_of_year.keys())[-4:]:
+    # find the 3 warm-up perf_ids for that year
+    cur.execute("""
+        SELECT p.perf_id
+          FROM Performance p
+          JOIN Event e ON p.event_id = e.event_id
+         WHERE e.fest_year=%s
+           AND p.sequence_number=1
+         ORDER BY p.datetime
+         LIMIT 3
+    """, (year,))
+    warm_pids = [r["perf_id"] for r in cur.fetchall()]
+    if len(warm_pids) < 3:
+        continue
+
+    # pick the same 4 artists we used above
+    # (you could store them in a list when you seeded in Section 6)
+    q3_artists = random.sample(artist_ids, 4)
+
+    for aid in q3_artists:
+        # count how many warm-ups this artist already has that year
+        cur.execute("""
+            SELECT COUNT(*) AS c
+              FROM Performance_Artist pa
+              JOIN Performance p USING(perf_id)
+              JOIN Event e       ON p.event_id = e.event_id
+             WHERE pa.artist_id=%s
+               AND p.sequence_number=1
+               AND e.fest_year=%s
+        """, (aid, year))
+        have = cur.fetchone()["c"]
+        # insert into whichever slots they’re missing
+        for pid in warm_pids[: max(0, 3 - have)]:
+            try:
+                cur.execute(
+                    "INSERT IGNORE INTO Performance_Artist (perf_id, artist_id) VALUES (%s,%s)",
+                    (pid, aid)
+                )
+            except mysql.connector.errors.DatabaseError:
+                pass
+
 # ───────────────────────── 9. RESALE QUEUES FOR FUTURE FESTIVALS ─────────────────────────
 print("→ resale queues for future festivals")
 
 # list of future events
 future_events = [ev for (yr, _), ev in event_of_day.items() if yr > TODAY.year]
 
-# every ticket_type id
+# all ticket types
 cur.execute("SELECT type_id FROM Ticket_Type")
 all_types = [r["type_id"] for r in cur.fetchall()]
 
 ACTIVE = status_id["active"]
 
 for ev in future_events:
-    # --- Pull ACTIVE tickets for this event
+    # --- 9.a First-wave OFFERS (up-to-10, never >½ of active tickets)
     cur.execute("""
         SELECT ticket_id, attendee_id, type_id
-        FROM Ticket
-        WHERE event_id = %s AND status_id = %s
+          FROM Ticket
+         WHERE event_id = %s AND status_id = %s
     """, (ev, ACTIVE))
     tickets = cur.fetchall()
     random.shuffle(tickets)
-
     if not tickets:
         continue
 
-    # --- 9.a  First‑wave OFFERS  (up‑to‑10, never >½ of active tickets)
     max_pairs = min(10, len(tickets) // 2)
-    offers1   = tickets[:max_pairs]                    # first batch
+    offers1   = tickets[:max_pairs]
     for row in offers1:
         cur.execute(
-            "INSERT INTO Resale_Offer (ticket_id, event_id, seller_id)"
-            " VALUES (%s, %s, %s)",
+            "INSERT INTO Resale_Offer (ticket_id, event_id, seller_id) VALUES (%s,%s,%s)",
             (row["ticket_id"], ev, row["attendee_id"])
         )
     offered_types = {r["type_id"] for r in offers1}
 
-    # --- 9.b  INTERESTS (exactly max_pairs rows) – ½ match now, ½ later
-    # buyers without ticket for this event
+    # --- 9.b Interests (exactly max_pairs rows) – some match now, some stay pending
     cur.execute("SELECT attendee_id FROM Ticket WHERE event_id=%s", (ev,))
     holders = {r["attendee_id"] for r in cur.fetchall()}
-    pool = [a for a in attendees if a not in holders]
-    buyers = random.sample(pool, max_pairs)
+    pool    = [a for a in attendees if a not in holders]
+    buyers  = random.sample(pool, max_pairs)
 
     half = max_pairs // 2
     for i, buyer in enumerate(buyers):
-        # even idx → request a currently offered type (guaranteed immediate match)
         if i < half:
+            # request an offered type ⇒ immediate trigger-match
             typ = random.choice(list(offered_types))
-        # odd idx → request a type *not* offered yet (forces later offer‑trigger match)
         else:
-            not_offered = [t for t in all_types if t not in offered_types]
-            typ = random.choice(not_offered or all_types)
+            # request a non-offered type ⇒ stays pending
+            not_off = [t for t in all_types if t not in offered_types]
+            typ     = random.choice(not_off or all_types)
 
         cur.execute(
             "INSERT INTO Resale_Interest (buyer_id, event_id) VALUES (%s,%s)",
@@ -971,41 +1043,39 @@ for ev in future_events:
             (req, typ)
         )
 
-    # at this point:
-    # • half the interests matched existing offers ⇒ ↓offer rows + ↓interest rows
-    # • the other half remain as pending interests
-
-    # --- 9.c  Second‑wave OFFERS – one per *pending* interest (guaranteed offer match)
+    # --- 9.c Second-wave OFFERS – only match half of the remaining pending interests
     cur.execute("""
-        SELECT rit.type_id
-        FROM Resale_Interest ri
-        JOIN Resale_Interest_Type rit USING (request_id)
-        WHERE ri.event_id = %s
+        SELECT ri.request_id, rit.type_id
+          FROM Resale_Interest ri
+          JOIN Resale_Interest_Type rit USING(request_id)
+         WHERE ri.event_id = %s
     """, (ev,))
-    pending_types = [r["type_id"] for r in cur.fetchall()]
+    pending = cur.fetchall()  # list of dicts with request_id & type_id
+    to_match = random.sample(pending, math.ceil(len(pending) / 2))
 
-    for typ in pending_types:
-        # find an unused ACTIVE ticket of that type
+    for row in to_match:
+        typ = row["type_id"]
+        # find an ACTIVE ticket of this type that isn't already on offer
         cur.execute("""
             SELECT ticket_id, attendee_id
-            FROM Ticket
-            WHERE event_id = %s
-                AND type_id  = %s
-                AND status_id = %s
-                AND NOT EXISTS (
-                    SELECT 1 FROM Resale_Offer ro
-                    WHERE ro.ticket_id = Ticket.ticket_id)
-            LIMIT 1
+              FROM Ticket
+             WHERE event_id = %s
+               AND type_id  = %s
+               AND status_id = %s
+               AND NOT EXISTS (
+                   SELECT 1 FROM Resale_Offer ro
+                    WHERE ro.ticket_id = Ticket.ticket_id
+               )
+             LIMIT 1
         """, (ev, typ, ACTIVE))
-        row = cur.fetchone()
-        if not row:           # rare: no suitable ticket left – skip
+        r2 = cur.fetchone()
+        if not r2:
             continue
-
         cur.execute(
-            "INSERT INTO Resale_Offer (ticket_id, event_id, seller_id)"
-            " VALUES (%s, %s, %s)",
-            (row["ticket_id"], ev, row["attendee_id"])
+            "INSERT INTO Resale_Offer (ticket_id, event_id, seller_id) VALUES (%s,%s,%s)",
+            (r2["ticket_id"], ev, r2["attendee_id"])
         )
+        # trigger will auto-match and remove the corresponding Resale_Interest
 
 print("→ resale seed complete: check with 'db137 viewq'")
 

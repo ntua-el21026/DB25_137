@@ -186,4 +186,3 @@ BEGIN
         SET MESSAGE_TEXT = 'Staffing below required ratio.';
     END IF;
 END;
-

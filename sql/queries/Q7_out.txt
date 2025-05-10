@@ -1,1 +1,3 @@
--- Output of query Q7
+fest_year  avg_experience_level
+---------  --------------------
+2021       3.2167              
