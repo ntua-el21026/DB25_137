@@ -17,8 +17,9 @@ This folder contains all schema definitions, logic scripts, queries, and outputs
 
 Contains one file per required SQL query:
 
-- `Q1.sql` through `Q15.sql`: Solutions to the assignment's 15 core questions
-- `Qx_out.txt`: Output from each query's execution using the CLI tool
+- `Q01.sql` through `Q15.sql`: Solutions to the assignment's 15 core questions
+- `Q01_out.txt` through `Q15_out.txt`: Output from each query's execution using the CLI tool
+- `Q0x_plan1_out.txt` and `Q0x_plan2_out.txt`: Especially for queries 4 and 6, two output files each for the two alternative execution plans. Those files contain, apart from the query output, explain and trace results, as needed.
 - All queries are written in clean SQL without ORMs, JSON, or array types
 
 ---
@@ -40,12 +41,12 @@ db137 load-db
 3. To run a specific query (e.g., Q8):
 
 ```bash
-db137 q8
+db137 q 8
 ```
 
 4. To run a batch of queries (e.g., Q1 to Q6):
 
 ```bash
-db137 q1-to-q6
+db137 q 1 6
 ```
 ---
