@@ -4,8 +4,8 @@ faker.py – Pulse University demo seeder (2024-2025)
 
 • Inserts complete, trigger-safe demo data.
 • Never disables foreign-key checks; instead wipes tables with DELETE + AUTO_INCREMENT = 1.
-• Keeps all integrity triggers enabled, including the 3-year limit.
-• Guarantees ample rows for every graded SQL query (Q2, Q4, Q6, Q11, Q14).
+• Keeps all integrity triggers enabled.
+• Guarantees ample rows for every graded SQL query
 """
 
 from __future__ import annotations
@@ -514,17 +514,19 @@ for b in range(N_BAND):
         cur.execute("INSERT INTO Band_SubGenre (band_id, sub_genre_id) VALUES (%s, %s)",
                     (bid, random.choice(sub_by_genre[gid])))
 
-# ───────────────────────── 6. PERFORMANCES (robust booking + expanded warm-ups) ─────────────────────────
-from mysql.connector import Error as DatabaseError
-
+# ───────────────────────── 6. PERFORMANCES (robust booking + init-cap 15) ─────────────────────────
 print("→ performances")
 reset_table("Performance")
 
+# maximum initial performances per artist
+MAX_INIT_PERF = 13
+
 # Track each artist’s festival-year history (for the 3-year limit)
+# appearances[aid] = list of years they’ve been scheduled
 appearances: Dict[int, List[int]] = {aid: [] for aid in artist_ids}
 perf_ids_of_event: Dict[int, List[int]] = {}
 
-# 6.1 – regular booking (80% band / 20% solo)
+# 6.1 – regular booking (80% band / 20% solo), but cap each artist at 15 total
 for (yr, day), ev in event_of_day.items():
     n = random.randint(MIN_PERF, MAX_PERF)
     perf_ids_of_event[ev] = []
@@ -536,14 +538,20 @@ for (yr, day), ev in event_of_day.items():
         if seq == 1:
             continue
 
-        # try booking a band (80%)
+        # try booking a band (80%), skipping any band with a maxed-out member
         if random.random() < 0.80:
             for _ in range(30):
                 bid = random.choice(band_ids)
                 cur.execute("SELECT artist_id FROM Band_Member WHERE band_id=%s", (bid,))
                 members = [r["artist_id"] for r in cur.fetchall()]
+
+                # enforce the 15-performance cap
+                if any(len(appearances[m]) >= MAX_INIT_PERF for m in members):
+                    continue
+
                 if not all(ok_seq(appearances[m], yr) for m in members):
                     continue
+
                 try:
                     cur.execute(
                         "INSERT INTO Performance_Band (perf_id, band_id) VALUES (%s, %s)",
@@ -558,9 +566,11 @@ for (yr, day), ev in event_of_day.items():
                     raise
             continue
 
-        # fallback: solo
+        # fallback: solo, skipping any artist who’s already at 15
         for _ in range(100):
             aid = random.choice(artist_ids)
+            if len(appearances[aid]) >= MAX_INIT_PERF:
+                continue
             if not ok_seq(appearances[aid], yr):
                 continue
             try:
@@ -575,11 +585,15 @@ for (yr, day), ev in event_of_day.items():
                     continue
                 raise
 
-# 6.2 – expanded Q3 warm-up seeding: 4 days × 8 artists × each year
+# 6.2 – expanded Q3 warm-up seeding: 4 days × 8 artists × each year, but cap at 15
 for yr in sorted(days_of_year.keys()):
     days = days_of_year[yr][:4]                          # first 4 days
     artists_for_year = random.sample(artist_ids, min(8, len(artist_ids)))
     for artist in artists_for_year:
+        # skip if already at cap
+        if len(appearances[artist]) >= MAX_INIT_PERF:
+            continue
+
         for day in days:
             ev = event_of_day[(yr, day)]
             # find or create the slot-1 performance
@@ -593,17 +607,18 @@ for yr in sorted(days_of_year.keys()):
             else:
                 pid = add_perf(ev, day, 1, MAX_PERF)
 
-            # insert the warm-up artist
-            try:
-                cur.execute(
-                    "INSERT INTO Performance_Artist (perf_id, artist_id) VALUES (%s, %s)",
-                    (pid, artist),
-                )
-                appearances[artist].append(yr)
-            except DatabaseError as e:
-                # ignore duplicate or 3-year-limit errors
-                if e.errno not in (1062, 1644):
-                    raise
+            # insert the warm-up artist if under the cap
+            if len(appearances[artist]) < MAX_INIT_PERF:
+                try:
+                    cur.execute(
+                        "INSERT INTO Performance_Artist (perf_id, artist_id) VALUES (%s, %s)",
+                        (pid, artist),
+                    )
+                    appearances[artist].append(yr)
+                except DatabaseError as e:
+                    # ignore duplicate or 3-year-limit errors
+                    if e.errno not in (1062, 1644):
+                        raise
 
 # ───────────────────────── 7. ATTENDEES • TICKETS • REVIEWS
 print("→ attendees, tickets, reviews")
@@ -983,6 +998,185 @@ for year in sorted(days_of_year.keys())[-4:]:
                 )
             except mysql.connector.errors.DatabaseError:
                 pass
+
+# ───────────────────────── 8.9. Q5: Tie ≥6 by fully squeezing events ─────────────────────────
+
+# 1) find current max performance_count among <30 artists
+cur.execute("""
+    SELECT COUNT(*) AS cnt
+      FROM View_Artist_Performance_Rating v
+      JOIN Artist a ON v.artist_id = a.artist_id
+     WHERE TIMESTAMPDIFF(YEAR,a.date_of_birth,CURDATE()) < 30
+  GROUP BY v.artist_id
+  ORDER BY cnt DESC
+  LIMIT 1
+""")
+max_cnt = (cur.fetchone() or {}).get("cnt", 0)
+
+# 2) pick the six artists ranked 2–7
+cur.execute("""
+    SELECT a.artist_id
+      FROM Artist a
+ LEFT JOIN Performance_Artist pa ON a.artist_id = pa.artist_id
+     WHERE TIMESTAMPDIFF(YEAR,a.date_of_birth,CURDATE()) < 30
+  GROUP BY a.artist_id
+  ORDER BY COUNT(pa.perf_id) DESC
+  LIMIT 6 OFFSET 1
+""")
+tie_artists = [r["artist_id"] for r in cur.fetchall()]
+
+# 3) how many more slots each needs
+need = {}
+for aid in tie_artists:
+    cur.execute("SELECT COUNT(*) AS c FROM Performance_Artist WHERE artist_id=%s", (aid,))
+    need[aid] = max_cnt - cur.fetchone()["c"]
+
+# helper: map event_id→day, and event→year
+day_of_event = {ev: day for (yr, day), ev in event_of_day.items()}
+def event_to_year(ev):
+    cur.execute("SELECT fest_year FROM Event WHERE event_id=%s", (ev,))
+    return cur.fetchone()["fest_year"]
+
+# 4) build one finite shuffled list of free (year,day)
+free_slots = [
+    (yr, d)
+    for yr in days_of_year
+    for d in days_of_year[yr]
+    if (yr, d) not in event_of_day
+]
+random.shuffle(free_slots)
+
+group_id = 1
+# 5) band-up while ≥2 artists still need slots
+while True:
+    group = [a for a, cnt in need.items() if cnt > 0]
+    if len(group) < 2:
+        break
+
+    # create a new tie-band
+    cur.execute(
+        "INSERT INTO Band (name, image, caption) VALUES (%s,%s,%s)",
+        (f"Q5_TieBand{group_id}", "https://placehold.co/600x400", "Tie-band")
+    )
+    bid = cur.lastrowid
+    for a in group:
+        cur.execute(
+            "INSERT INTO Band_Member (band_id, artist_id) VALUES (%s,%s)",
+            (bid, a)
+        )
+
+    added = False
+    # 5a) Squeeze **existing** events fully
+    for ev, day in day_of_event.items():
+        # how many slots already?
+        cur.execute("SELECT COUNT(*) AS c FROM Performance WHERE event_id=%s", (ev,))
+        filled = cur.fetchone()["c"]
+        # while we still need at least one round and event isn't full
+        while filled < MAX_PERF and min(need[a] for a in group) > 0:
+            pid = safe_add_perf(ev, day, MAX_PERF)  # enforces no-overlap/breaks :contentReference[oaicite:0]{index=0}:contentReference[oaicite:1]{index=1}
+            if not pid:
+                break
+            # assign our band (fans out to members) :contentReference[oaicite:2]{index=2}:contentReference[oaicite:3]{index=3}
+            cur.execute(
+                "INSERT INTO Performance_Band (perf_id, band_id) VALUES (%s,%s)",
+                (pid, bid)
+            )
+            perf_ids_of_event[ev].append(pid)
+            filled += 1
+            for a in group:
+                need[a] -= 1
+            added = True
+
+    # 5b) Then squeeze **new** events on free days
+    while free_slots and min(need[a] for a in group) > 0:
+        yr, day = free_slots.pop()
+        st = datetime.combine(day, START_TIME)
+        et = st + timedelta(hours=6)
+        cur.execute("""
+            INSERT INTO Event
+              (title,is_full,start_dt,end_dt,image,caption,fest_year,stage_id)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+        """, (
+            f"Extra Tie Event {group_id}", False, st, et,
+            "https://placehold.co/600x400","Squeezed", yr, stage_of_year[yr]
+        ))
+        ev_new = cur.lastrowid
+        event_of_day[(yr, day)] = ev_new
+        day_of_event[ev_new] = day
+        perf_ids_of_event[ev_new] = []
+
+        # fill up to MAX_PERF slots
+        for _ in range(min(MAX_PERF, min(need[a] for a in group))):
+            pid = safe_add_perf(ev_new, day, MAX_PERF)
+            if not pid:
+                break
+            cur.execute(
+                "INSERT INTO Performance_Band (perf_id, band_id) VALUES (%s,%s)",
+                (pid, bid)
+            )
+            perf_ids_of_event[ev_new].append(pid)
+            for a in group:
+                need[a] -= 1
+            added = True
+
+    if not added:
+        # nothing more to do
+        break
+
+    group_id += 1
+
+# 6) if one artist left, give them squeezed solos
+left = [a for a, cnt in need.items() if cnt > 0]
+if left:
+    aid = left[0]
+    rem = need[aid]
+
+    # 6a) existing events
+    for ev, day in day_of_event.items():
+        if rem <= 0:
+            break
+        cur.execute("SELECT COUNT(*) AS c FROM Performance WHERE event_id=%s", (ev,))
+        filled = cur.fetchone()["c"]
+        while filled < MAX_PERF and rem > 0:
+            pid = safe_add_perf(ev, day, MAX_PERF)
+            if not pid:
+                break
+            cur.execute(
+                "INSERT INTO Performance_Artist (perf_id, artist_id) VALUES (%s,%s)",
+                (pid, aid)
+            )
+            perf_ids_of_event[ev].append(pid)
+            filled += 1
+            rem -= 1
+
+    # 6b) new events
+    while rem > 0 and free_slots:
+        yr, day = free_slots.pop()
+        st = datetime.combine(day, START_TIME)
+        et = st + timedelta(hours=6)
+        cur.execute("""
+            INSERT INTO Event
+              (title,is_full,start_dt,end_dt,image,caption,fest_year,stage_id)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+        """, (
+            "Extra Solo Event", False, st, et,
+            "https://placehold.co/600x400","Solo-squeeze", yr, stage_of_year[yr]
+        ))
+        ev_new = cur.lastrowid
+        event_of_day[(yr, day)] = ev_new
+        day_of_event[ev_new] = day
+        perf_ids_of_event[ev_new] = []
+
+        while rem > 0 and len(perf_ids_of_event[ev_new]) < MAX_PERF:
+            pid = safe_add_perf(ev_new, day, MAX_PERF)
+            if not pid:
+                break
+            cur.execute(
+                "INSERT INTO Performance_Artist (perf_id, artist_id) VALUES (%s,%s)",
+                (pid, aid)
+            )
+            perf_ids_of_event[ev_new].append(pid)
+            rem -= 1
 
 # ───────────────────────── 9. RESALE QUEUES FOR FUTURE FESTIVALS ─────────────────────────
 print("→ resale queues for future festivals")

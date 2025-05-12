@@ -47,7 +47,7 @@ As per the course specifications, we designed and implemented a **relational dat
 - **Graded SQL Queries**:
   - One script per query in `sql/queries/Qx.sql` with results in `Qx_out.txt`
   - Indexed and optimized using `sql/indexing.sql`
-  - Includes trace analysis and query plan tuning for Q4 and Q6
+  - Includes trace analysis and query plan tuning for Q4 and Q6, in the respective `.txt` files
 
 - **Synthetic Data Generation**:
   - `faker.py` (immediate data insertion) and `faker_sql.py` (query generation) create a complete, constraint-compliant festival dataset. In the second case, `load.sql` is used.
