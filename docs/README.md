@@ -24,3 +24,5 @@ This folder contains supporting documentation for the semester project.
   - `cardinality_constraints.txt`: Participation and cardinality assumptions
   - `project_structure.txt`: Filesystem layout and deliverable organization
   - `db_data.txt`: Summary of generated data from `faker.py`
+
+---

@@ -29,6 +29,7 @@
 ├── docs
 │   ├── README.md
 │   ├── assignment.pdf
+│   ├── ddl.pdf
 │   └── organization
 │       ├── cardinality_constraints.txt
 │       ├── db_data.txt
@@ -59,6 +60,26 @@
 │   ├── load.sql
 │   ├── procedures.sql
 │   ├── queries
+│   │   ├── Q01.sql
+│   │   ├── Q01_out.txt
+│   │   ├── Q02.sql
+│   │   ├── Q02_out.txt
+│   │   ├── Q03.sql
+│   │   ├── Q03_out.txt
+│   │   ├── Q04.sql
+│   │   ├── Q04_plan1_out.txt
+│   │   ├── Q04_plan2_out.txt
+│   │   ├── Q05.sql
+│   │   ├── Q05_out.txt
+│   │   ├── Q06.sql
+│   │   ├── Q06_plan1_out.txt
+│   │   ├── Q06_plan2_out.txt
+│   │   ├── Q07.sql
+│   │   ├── Q07_out.txt
+│   │   ├── Q08.sql
+│   │   ├── Q08_out.txt
+│   │   ├── Q09.sql
+│   │   ├── Q09_out.txt
 │   │   ├── Q1.sql
 │   │   ├── Q10.sql
 │   │   ├── Q10_out.txt
@@ -96,4 +117,4 @@
     ├── test_cli.sh
     └── test_cli_results.txt
 
-22 directories, 74 files
+22 directories, 95 files
