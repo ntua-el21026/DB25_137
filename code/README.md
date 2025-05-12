@@ -35,7 +35,7 @@ This folder contains utility scripts used to generate and maintain the SQL files
 
    - `dropgen.py`: Automatically inserts a full DROP block into `install.sql`, `views.sql`, `procedures.sql` and `triggers.sql` by detecting all create statemets and removes the old block.
    - `fixeof.py`: Ensures every source file ends with a single newline (prevents merge/diff issues).
-   - `qgen.py`: Creates placeholder files Q1.sql–Q15.sql and Q1_out.txt–Q15_out.txt **only if they do not exist or are empty**.
+   - `qgen.py`: Creates placeholder files Q01.sql–Q15.sql and Q01_out.txt–Q15_out.txt **only if they do not exist or are empty**.
 
 3. **`organization/`**
 
