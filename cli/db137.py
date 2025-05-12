@@ -388,7 +388,6 @@ def status(user_mgr: UserManager, database: str):
 @click.pass_context
 def reset(ctx):
     ctx.invoke(drop_db, yes=True)
-    ctx.invoke(create_db)
     ctx.invoke(load_db)
     click.echo("[OK] Database reset complete.")
 
