@@ -80,7 +80,6 @@
 │   │   ├── Q08_out.txt
 │   │   ├── Q09.sql
 │   │   ├── Q09_out.txt
-│   │   ├── Q1.sql
 │   │   ├── Q10.sql
 │   │   ├── Q10_out.txt
 │   │   ├── Q11.sql
@@ -92,24 +91,7 @@
 │   │   ├── Q14.sql
 │   │   ├── Q14_out.txt
 │   │   ├── Q15.sql
-│   │   ├── Q15_out.txt
-│   │   ├── Q1_out.txt
-│   │   ├── Q2.sql
-│   │   ├── Q2_out.txt
-│   │   ├── Q3.sql
-│   │   ├── Q3_out.txt
-│   │   ├── Q4.sql
-│   │   ├── Q4_out.txt
-│   │   ├── Q5.sql
-│   │   ├── Q5_out.txt
-│   │   ├── Q6.sql
-│   │   ├── Q6_out.txt
-│   │   ├── Q7.sql
-│   │   ├── Q7_out.txt
-│   │   ├── Q8.sql
-│   │   ├── Q8_out.txt
-│   │   ├── Q9.sql
-│   │   └── Q9_out.txt
+│   │   └── Q15_out.txt
 │   ├── triggers.sql
 │   └── views.sql
 └── test
@@ -117,4 +99,4 @@
     ├── test_cli.sh
     └── test_cli_results.txt
 
-22 directories, 95 files
+22 directories, 77 files
