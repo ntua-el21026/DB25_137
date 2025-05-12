@@ -1,12 +1,11 @@
 artist_id  artist_name        fest_year  warm_up_count
 ---------  -----------------  ---------  -------------
-11         Artist10 Lastname  2020       4
-11         Artist10 Lastname  2026       4
-14         Artist13 Lastname  2021       4
-22         Artist21 Lastname  2017       4
+20         Artist19 Lastname  2016       4
+37         Artist36 Lastname  2017       4
+43         Artist42 Lastname  2021       4
+27         Artist26 Lastname  2027       4
+41         Artist40 Lastname  2023       4
+41         Artist40 Lastname  2018       4
 25         Artist24 Lastname  2024       4
-28         Artist27 Lastname  2016       4
-31         Artist30 Lastname  2022       4
-40         Artist39 Lastname  2023       4
-3          Artist2 Lastname   2025       3
-40         Artist39 Lastname  2018       3
+42         Artist41 Lastname  2025       3
+14         Artist13 Lastname  2026       3

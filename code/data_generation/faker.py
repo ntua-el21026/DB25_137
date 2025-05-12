@@ -363,10 +363,13 @@ for yr, days in days_of_year.items():
                         yr, stage_of_year[yr]))
         event_of_day[(yr, d)] = cur.lastrowid
 
-# ───────────────────────── 4. STAFF & WORKS_ON
+# ───────────────────────── 4. STAFF & WORKS_ON (create + enforce ratios) ─────────────────────────
 print("→ staff & assignments")
-for t in ("Works_On", "Staff"):
-    reset_table(t)
+reset_table("Works_On")
+reset_table("Staff")
+
+import random, math
+from datetime import date
 
 # 1) Create security staff
 sec_ids: List[int] = []
@@ -375,9 +378,9 @@ for n in range(N_SEC):
         """INSERT INTO Staff
              (first_name, last_name, date_of_birth, role_id,
               experience_id, image, caption)
-           VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+           VALUES (%s,%s,%s,%s,%s,%s,%s)""",
         (
-            f"Sec{n}", "Guard", date(1980, 1, 1),
+            f"Sec{n}", "Guard", date(1980,1,1),
             role_id["security"], exp_id["experienced"],
             "https://placehold.co/600x400", "Security"
         )
@@ -391,57 +394,62 @@ for n in range(N_SUP):
         """INSERT INTO Staff
              (first_name, last_name, date_of_birth, role_id,
               experience_id, image, caption)
-           VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+           VALUES (%s,%s,%s,%s,%s,%s,%s)""",
         (
-            f"Sup{n}", "Crew", date(1985, 1, 1),
+            f"Sup{n}", "Crew", date(1985,1,1),
             role_id["support"], exp_id["intermediate"],
             "https://placehold.co/600x400", "Support"
         )
     )
     sup_ids.append(cur.lastrowid)
 
-# 3) Create variety of other staff roles
+# 3) Create other (technical) staff: 5 per remaining role
 other_ids: List[int] = []
-other_roles = [r for r in role_id if r not in ("security", "support")]
-# create 5 staff per other role, with random age and experience
+other_roles = [r for r in role_id if r not in ("security","support")]
 for role_name in other_roles:
     for n in range(5):
-        dob_year = random.randint(1970, 2000)
-        dob = date(dob_year, random.randint(1,12), random.randint(1,28))
-        exp = random.choice(list(exp_id.values()))
-        caption = role_name.title()
+        dob = date(random.randint(1970,2000),
+                   random.randint(1,12),
+                   random.randint(1,28))
         cur.execute(
             """INSERT INTO Staff
                  (first_name, last_name, date_of_birth, role_id,
                   experience_id, image, caption)
-               VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+               VALUES (%s,%s,%s,%s,%s,%s,%s)""",
             (
-                f"{role_name.replace(' ', '')}{n}", "Staff",
-                dob, role_id[role_name], exp,
-                "https://placehold.co/600x400", caption
+                f"{role_name.title()}{n}", "Staff", dob,
+                role_id[role_name], random.choice(list(exp_id.values())),
+                "https://placehold.co/600x400", role_name.title()
             )
         )
         other_ids.append(cur.lastrowid)
 
-# 4) Assign staff to events
-for ev in event_of_day.values():
-    # always assign minimum security and support
-    for sid in sec_ids[:SEC_PER_EVENT]:
-        cur.execute(
-            "INSERT INTO Works_On (staff_id, event_id) VALUES (%s, %s)",
-            (sid, ev)
-        )
-    for sid in sup_ids[:SUP_PER_EVENT]:
-        cur.execute(
-            "INSERT INTO Works_On (staff_id, event_id) VALUES (%s, %s)",
-            (sid, ev)
-        )
+# 4) Assign staff to each event according to stage capacity ratios
+for (yr, day), ev in event_of_day.items():
+    # lookup this event’s stage capacity
+    cur.execute("""
+        SELECT s.capacity
+          FROM Event e
+          JOIN Stage s ON e.stage_id = s.stage_id
+         WHERE e.event_id = %s
+    """, (ev,))
+    cap = cur.fetchone()["capacity"]
 
-    # assign ~80% of other staff randomly
-    count_other = math.ceil(len(other_ids) * 0.8)
-    for sid in random.sample(other_ids, count_other):
+    # compute required minima
+    min_sec  = math.ceil(cap * 0.05)           # ≥5% security
+    min_sup  = math.ceil(cap * 0.02)           # ≥2% support
+    min_tech = max(1, math.ceil(cap / 100))    # ≥1 tech per 100 seats
+
+    # randomly pick that many from each pool
+    chosen = []
+    chosen += random.sample(sec_ids,  min(min_sec,  len(sec_ids)))
+    chosen += random.sample(sup_ids,  min(min_sup,  len(sup_ids)))
+    chosen += random.sample(other_ids, min(min_tech, len(other_ids)))
+
+    # insert the assignments
+    for sid in chosen:
         cur.execute(
-            "INSERT INTO Works_On (staff_id, event_id) VALUES (%s, %s)",
+            "INSERT INTO Works_On (staff_id, event_id) VALUES (%s,%s)",
             (sid, ev)
         )
 

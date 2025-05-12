@@ -2,23 +2,23 @@
 ## PLAN 1 — RESULT ##
 artist_id  artist_name        avg_interpretation  avg_overall
 ---------  -----------------  ------------------  -----------
-42         Artist41 Lastname  2.9932              2.9796
+42         Artist41 Lastname  3.0771              3.0514
 
 ## PLAN 1 — EXPLAIN ##
 id  select_type         table       partitions  type    possible_keys                                                key                 key_len  ref                          rows  filtered  Extra      
 --  ------------------  ----------  ----------  ------  -----------------------------------------------------------  ------------------  -------  ---------------------------  ----  --------  -----------
 1   PRIMARY             <derived2>  NULL        system  NULL                                                         NULL                NULL     NULL                         1     100.0     NULL
 2   DERIVED             a           NULL        const   PRIMARY                                                      PRIMARY             4        const                        1     100.0     NULL
-3   DEPENDENT SUBQUERY  pa          NULL        ref     PRIMARY,idx_perf_artist                                      idx_perf_artist     4        const                        13    100.0     Using index
-3   DEPENDENT SUBQUERY  r           NULL        ref     perf_id,idx_review_perf_io,idx_review_perf_attendee_overall  idx_review_perf_io  4        pulse_university.pa.perf_id  47    100.0     Using index
-4   DEPENDENT SUBQUERY  pa          NULL        ref     PRIMARY,idx_perf_artist                                      idx_perf_artist     4        const                        13    100.0     Using index
-4   DEPENDENT SUBQUERY  r           NULL        ref     perf_id,idx_review_perf_io,idx_review_perf_attendee_overall  idx_review_perf_io  4        pulse_university.pa.perf_id  47    100.0     Using index
-5   DEPENDENT SUBQUERY  pa          NULL        ref     PRIMARY,idx_perf_artist                                      idx_perf_artist     4        const                        13    100.0     Using index
+3   DEPENDENT SUBQUERY  pa          NULL        ref     PRIMARY,idx_perf_artist                                      idx_perf_artist     4        const                        8     100.0     Using index
+3   DEPENDENT SUBQUERY  r           NULL        ref     perf_id,idx_review_perf_io,idx_review_perf_attendee_overall  idx_review_perf_io  4        pulse_university.pa.perf_id  45    100.0     Using index
+4   DEPENDENT SUBQUERY  pa          NULL        ref     PRIMARY,idx_perf_artist                                      idx_perf_artist     4        const                        8     100.0     Using index
+4   DEPENDENT SUBQUERY  r           NULL        ref     perf_id,idx_review_perf_io,idx_review_perf_attendee_overall  idx_review_perf_io  4        pulse_university.pa.perf_id  45    100.0     Using index
+5   DEPENDENT SUBQUERY  pa          NULL        ref     PRIMARY,idx_perf_artist                                      idx_perf_artist     4        const                        8     100.0     Using index
 
 ## PLAN 1 — EXPLAIN ANALYZE ##
 EXPLAIN
 -------
--> Rows fetched before execution  (cost=0..0 rows=1) (actual time=0..100e-6 rows=1 loops=1)
+-> Rows fetched before execution  (cost=0..0 rows=1) (actual time=199e-6..199e-6 rows=1 loops=1)
 
 
 ## PLAN 1 — OPTIMIZER_TRACE ##
@@ -299,8 +299,8 @@ TRACE
                       "table": "`Performance_Artist` `pa`",
                       "range_analysis": {
                         "table_scan": {
-                          "rows": 437,
-                          "cost": 46.05
+                          "rows": 465,
+                          "cost": 48.85
                         },
                         "potential_range_indexes": [
                           {
@@ -319,7 +319,7 @@ TRACE
                         ],
                         "best_covering_index_scan": {
                           "index": "idx_perf_artist",
-                          "cost": 44.1625,
+                          "cost": 46.9761,
                           "chosen": true
                         },
                         "setup_range_conditions": [
@@ -344,8 +344,8 @@ TRACE
                               "using_mrr": false,
                               "index_only": true,
                               "in_memory": 1,
-                              "rows": 13,
-                              "cost": 1.56585,
+                              "rows": 8,
+                              "cost": 1.06341,
                               "chosen": true
                             }
                           ],
@@ -358,13 +358,13 @@ TRACE
                           "range_access_plan": {
                             "type": "range_scan",
                             "index": "idx_perf_artist",
-                            "rows": 13,
+                            "rows": 8,
                             "ranges": [
                               "artist_id = 42"
                             ]
                           },
-                          "rows_for_plan": 13,
-                          "cost_for_plan": 1.56585,
+                          "rows_for_plan": 8,
+                          "cost_for_plan": 1.06341,
                           "chosen": true
                         }
                       }
@@ -372,8 +372,8 @@ TRACE
                     {
                       "table": "`Review` `r`",
                       "table_scan": {
-                        "rows": 11020,
-                        "cost": 7.25
+                        "rows": 9926,
+                        "cost": 7
                       }
                     }
                   ]
@@ -395,8 +395,8 @@ TRACE
                           {
                             "access_type": "ref",
                             "index": "idx_perf_artist",
-                            "rows": 13,
-                            "cost": 1.55585,
+                            "rows": 8,
+                            "cost": 1.05341,
                             "chosen": true
                           },
                           {
@@ -410,8 +410,8 @@ TRACE
                         ]
                       },
                       "condition_filtering_pct": 100,
-                      "rows_for_plan": 13,
-                      "cost_for_plan": 1.55585,
+                      "rows_for_plan": 8,
+                      "cost_for_plan": 1.05341,
                       "rest_of_plan": [
                         {
                           "plan_prefix": [
@@ -423,36 +423,36 @@ TRACE
                               {
                                 "access_type": "ref",
                                 "index": "perf_id",
-                                "rows": 47.5,
-                                "cost": 216.125,
+                                "rows": 45.1182,
+                                "cost": 126.331,
                                 "chosen": true
                               },
                               {
                                 "access_type": "ref",
                                 "index": "idx_review_perf_io",
-                                "rows": 47.5,
-                                "cost": 65.1843,
+                                "rows": 45.1182,
+                                "cost": 38.2022,
                                 "chosen": true
                               },
                               {
                                 "access_type": "ref",
                                 "index": "idx_review_perf_attendee_overall",
-                                "rows": 47.5,
-                                "cost": 65.2395,
+                                "rows": 45.1182,
+                                "cost": 38.2344,
                                 "chosen": false
                               },
                               {
                                 "access_type": "scan",
-                                "cost": 1109.25,
-                                "rows": 11020,
+                                "cost": 999.6,
+                                "rows": 9926,
                                 "chosen": false,
                                 "cause": "cost"
                               }
                             ]
                           },
                           "condition_filtering_pct": 100,
-                          "rows_for_plan": 617.5,
-                          "cost_for_plan": 66.7401,
+                          "rows_for_plan": 360.945,
+                          "cost_for_plan": 39.2556,
                           "chosen": true
                         }
                       ]
@@ -482,20 +482,20 @@ TRACE
                             "chosen": false
                           },
                           {
-                            "rows_to_scan": 11020,
+                            "rows_to_scan": 9926,
                             "filtering_effect": [
                             ],
                             "final_filtering_effect": 1,
                             "access_type": "scan",
-                            "resulting_rows": 11020,
-                            "cost": 1109.25,
+                            "resulting_rows": 9926,
+                            "cost": 999.6,
                             "chosen": true
                           }
                         ]
                       },
                       "condition_filtering_pct": 100,
-                      "rows_for_plan": 11020,
-                      "cost_for_plan": 1109.25,
+                      "rows_for_plan": 9926,
+                      "cost_for_plan": 999.6,
                       "pruned_by_cost": true
                     }
                   ]
@@ -650,8 +650,8 @@ TRACE
                       "table": "`Performance_Artist` `pa`",
                       "range_analysis": {
                         "table_scan": {
-                          "rows": 437,
-                          "cost": 46.05
+                          "rows": 465,
+                          "cost": 48.85
                         },
                         "potential_range_indexes": [
                           {
@@ -670,7 +670,7 @@ TRACE
                         ],
                         "best_covering_index_scan": {
                           "index": "idx_perf_artist",
-                          "cost": 44.1625,
+                          "cost": 46.9761,
                           "chosen": true
                         },
                         "setup_range_conditions": [
@@ -695,8 +695,8 @@ TRACE
                               "using_mrr": false,
                               "index_only": true,
                               "in_memory": 1,
-                              "rows": 13,
-                              "cost": 1.56585,
+                              "rows": 8,
+                              "cost": 1.06341,
                               "chosen": true
                             }
                           ],
@@ -709,13 +709,13 @@ TRACE
                           "range_access_plan": {
                             "type": "range_scan",
                             "index": "idx_perf_artist",
-                            "rows": 13,
+                            "rows": 8,
                             "ranges": [
                               "artist_id = 42"
                             ]
                           },
-                          "rows_for_plan": 13,
-                          "cost_for_plan": 1.56585,
+                          "rows_for_plan": 8,
+                          "cost_for_plan": 1.06341,
                           "chosen": true
                         }
                       }
@@ -723,8 +723,8 @@ TRACE
                     {
                       "table": "`Review` `r`",
                       "table_scan": {
-                        "rows": 11020,
-                        "cost": 7.25
+                        "rows": 9926,
+                        "cost": 7
                       }
                     }
                   ]
@@ -746,8 +746,8 @@ TRACE
                           {
                             "access_type": "ref",
                             "index": "idx_perf_artist",
-                            "rows": 13,
-                            "cost": 1.55585,
+                            "rows": 8,
+                            "cost": 1.05341,
                             "chosen": true
                           },
                           {
@@ -761,8 +761,8 @@ TRACE
                         ]
                       },
                       "condition_filtering_pct": 100,
-                      "rows_for_plan": 13,
-                      "cost_for_plan": 1.55585,
+                      "rows_for_plan": 8,
+                      "cost_for_plan": 1.05341,
                       "rest_of_plan": [
                         {
                           "plan_prefix": [
@@ -774,36 +774,36 @@ TRACE
                               {
                                 "access_type": "ref",
                                 "index": "perf_id",
-                                "rows": 47.5,
-                                "cost": 216.125,
+                                "rows": 45.1182,
+                                "cost": 126.331,
                                 "chosen": true
                               },
                               {
                                 "access_type": "ref",
                                 "index": "idx_review_perf_io",
-                                "rows": 47.5,
-                                "cost": 65.1843,
+                                "rows": 45.1182,
+                                "cost": 38.2022,
                                 "chosen": true
                               },
                               {
                                 "access_type": "ref",
                                 "index": "idx_review_perf_attendee_overall",
-                                "rows": 47.5,
-                                "cost": 216.125,
+                                "rows": 45.1182,
+                                "cost": 126.331,
                                 "chosen": false
                               },
                               {
                                 "access_type": "scan",
-                                "cost": 1109.25,
-                                "rows": 11020,
+                                "cost": 999.6,
+                                "rows": 9926,
                                 "chosen": false,
                                 "cause": "cost"
                               }
                             ]
                           },
                           "condition_filtering_pct": 100,
-                          "rows_for_plan": 617.5,
-                          "cost_for_plan": 66.7401,
+                          "rows_for_plan": 360.945,
+                          "cost_for_plan": 39.2556,
                           "chosen": true
                         }
                       ]
@@ -833,20 +833,20 @@ TRACE
                             "chosen": false
                           },
                           {
-                            "rows_to_scan": 11020,
+                            "rows_to_scan": 9926,
                             "filtering_effect": [
                             ],
                             "final_filtering_effect": 1,
                             "access_type": "scan",
-                            "resulting_rows": 11020,
-                            "cost": 1109.25,
+                            "resulting_rows": 9926,
+                            "cost": 999.6,
                             "chosen": true
                           }
                         ]
                       },
                       "condition_filtering_pct": 100,
-                      "rows_for_plan": 11020,
-                      "cost_for_plan": 1109.25,
+                      "rows_for_plan": 9926,
+                      "cost_for_plan": 999.6,
                       "pruned_by_cost": true
                     }
                   ]
@@ -964,8 +964,8 @@ TRACE
                       },
                       "range_analysis": {
                         "table_scan": {
-                          "rows": 437,
-                          "cost": 46.05
+                          "rows": 465,
+                          "cost": 48.85
                         },
                         "potential_range_indexes": [
                           {
@@ -987,7 +987,7 @@ TRACE
                         ],
                         "best_covering_index_scan": {
                           "index": "idx_perf_artist",
-                          "cost": 44.1625,
+                          "cost": 46.9761,
                           "chosen": true
                         },
                         "setup_range_conditions": [
@@ -1029,8 +1029,8 @@ TRACE
                               "using_mrr": false,
                               "index_only": true,
                               "in_memory": 1,
-                              "rows": 13,
-                              "cost": 1.56585,
+                              "rows": 8,
+                              "cost": 1.06341,
                               "chosen": true
                             }
                           ],
@@ -1043,13 +1043,13 @@ TRACE
                           "range_access_plan": {
                             "type": "range_scan",
                             "index": "idx_perf_artist",
-                            "rows": 13,
+                            "rows": 8,
                             "ranges": [
                               "artist_id = 42"
                             ]
                           },
-                          "rows_for_plan": 13,
-                          "cost_for_plan": 1.56585,
+                          "rows_for_plan": 8,
+                          "cost_for_plan": 1.06341,
                           "chosen": true
                         }
                       }
@@ -1067,8 +1067,8 @@ TRACE
                           {
                             "access_type": "ref",
                             "index": "idx_perf_artist",
-                            "rows": 13,
-                            "cost": 1.55585,
+                            "rows": 8,
+                            "cost": 1.05341,
                             "chosen": true
                           },
                           {
@@ -1082,8 +1082,8 @@ TRACE
                         ]
                       },
                       "condition_filtering_pct": 100,
-                      "rows_for_plan": 13,
-                      "cost_for_plan": 1.55585,
+                      "rows_for_plan": 8,
+                      "cost_for_plan": 1.05341,
                       "chosen": true
                     }
                   ]

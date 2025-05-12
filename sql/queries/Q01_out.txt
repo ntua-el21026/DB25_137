@@ -3,7 +3,7 @@ fest_year  payment_method  total_revenue
 2016       credit card     44000.00
 2016       debit card      4050.00
 2017       credit card     45000.00
-2017       debit card      15300.00
+2017       debit card      14940.00
 2018       credit card     45000.00
 2018       debit card      9900.00
 2019       credit card     52800.00
@@ -13,11 +13,11 @@ fest_year  payment_method  total_revenue
 2021       credit card     44000.00
 2021       debit card      1350.00
 2022       credit card     54000.00
-2022       debit card      17010.00
+2022       debit card      17640.00
 2023       credit card     36000.00
 2023       debit card      13680.00
 2024       credit card     45000.00
-2024       debit card      17460.00
+2024       debit card      17640.00
 2025       credit card     45000.00
 2025       debit card      8550.00
 2026       credit card     44000.00

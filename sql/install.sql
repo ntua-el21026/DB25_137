@@ -503,6 +503,7 @@ CREATE TABLE Resale_Match_Log (
     buyer_id           INT UNSIGNED NOT NULL,
     seller_id          INT UNSIGNED NOT NULL,
     match_time         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (ticket_id) REFERENCES Ticket(ticket_id)
         ON DELETE RESTRICT ON UPDATE CASCADE,
     FOREIGN KEY (offered_type_id) REFERENCES Ticket_Type(type_id)
