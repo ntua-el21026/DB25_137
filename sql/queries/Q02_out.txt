@@ -1,19 +1,17 @@
 artist_id  artist_name        genre_name  participated
 ---------  -----------------  ----------  ------------
-15         Artist14 Lastname  Jazz        No
-19         Artist18 Lastname  Jazz        No
-20         Artist19 Lastname  Jazz        No
-3          Artist2 Lastname   Jazz        No
-28         Artist27 Lastname  Jazz        No
-32         Artist31 Lastname  Jazz        No
-45         Artist44 Lastname  Jazz        No
-46         Jazzman0 Solo      Jazz        No
-47         Jazzman1 Solo      Jazz        No
-48         Jazzman2 Solo      Jazz        No
-49         Jazzman3 Solo      Jazz        No
-50         Jazzman4 Solo      Jazz        No
-51         Jazzman5 Solo      Jazz        No
-52         Jazzman6 Solo      Jazz        No
-53         Jazzman7 Solo      Jazz        No
-54         Jazzman8 Solo      Jazz        No
-55         Jazzman9 Solo      Jazz        No
+1          Artist0 Lastname   Rock        Yes
+5          Artist4 Lastname   Rock        No
+6          Artist5 Lastname   Rock        No
+11         Artist10 Lastname  Rock        No
+16         Artist15 Lastname  Rock        No
+20         Artist19 Lastname  Rock        No
+21         Artist20 Lastname  Rock        No
+26         Artist25 Lastname  Rock        No
+29         Artist28 Lastname  Rock        No
+31         Artist30 Lastname  Rock        No
+33         Artist32 Lastname  Rock        No
+36         Artist35 Lastname  Rock        No
+40         Artist39 Lastname  Rock        No
+41         Artist40 Lastname  Rock        No
+44         Artist43 Lastname  Rock        No

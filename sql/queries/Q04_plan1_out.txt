@@ -10,15 +10,15 @@ id  select_type         table       partitions  type    possible_keys           
 1   PRIMARY             <derived2>  NULL        system  NULL                                                         NULL                NULL     NULL                         1     100.0     NULL
 2   DERIVED             a           NULL        const   PRIMARY                                                      PRIMARY             4        const                        1     100.0     NULL
 3   DEPENDENT SUBQUERY  pa          NULL        ref     PRIMARY,idx_perf_artist                                      idx_perf_artist     4        const                        1     100.0     Using index
-3   DEPENDENT SUBQUERY  r           NULL        ref     perf_id,idx_review_perf_io,idx_review_perf_attendee_overall  idx_review_perf_io  4        pulse_university.pa.perf_id  47    100.0     Using index
+3   DEPENDENT SUBQUERY  r           NULL        ref     perf_id,idx_review_perf_io,idx_review_perf_attendee_overall  idx_review_perf_io  4        pulse_university.pa.perf_id  48    100.0     Using index
 4   DEPENDENT SUBQUERY  pa          NULL        ref     PRIMARY,idx_perf_artist                                      idx_perf_artist     4        const                        1     100.0     Using index
-4   DEPENDENT SUBQUERY  r           NULL        ref     perf_id,idx_review_perf_io,idx_review_perf_attendee_overall  idx_review_perf_io  4        pulse_university.pa.perf_id  47    100.0     Using index
+4   DEPENDENT SUBQUERY  r           NULL        ref     perf_id,idx_review_perf_io,idx_review_perf_attendee_overall  idx_review_perf_io  4        pulse_university.pa.perf_id  48    100.0     Using index
 5   DEPENDENT SUBQUERY  pa          NULL        ref     PRIMARY,idx_perf_artist                                      idx_perf_artist     4        const                        1     100.0     Using index
 
 ## PLAN 1 — EXPLAIN ANALYZE ##
 EXPLAIN
 -------
--> Rows fetched before execution  (cost=0..0 rows=1) (actual time=203e-6..304e-6 rows=1 loops=1)
+-> Rows fetched before execution  (cost=0..0 rows=1) (actual time=59e-6..97e-6 rows=1 loops=1)
 
 
 ## PLAN 1 — OPTIMIZER_TRACE ##
@@ -372,8 +372,8 @@ TRACE
                     {
                       "table": "`Review` `r`",
                       "table_scan": {
-                        "rows": 9796,
-                        "cost": 6.75
+                        "rows": 9582,
+                        "cost": 6.5
                       }
                     }
                   ]
@@ -423,28 +423,28 @@ TRACE
                               {
                                 "access_type": "ref",
                                 "index": "perf_id",
-                                "rows": 47.0962,
-                                "cost": 16.4837,
+                                "rows": 48.8878,
+                                "cost": 17.1107,
                                 "chosen": true
                               },
                               {
                                 "access_type": "ref",
                                 "index": "idx_review_perf_io",
-                                "rows": 47.0962,
-                                "cost": 4.97367,
+                                "rows": 48.8878,
+                                "cost": 5.15338,
                                 "chosen": true
                               },
                               {
                                 "access_type": "ref",
                                 "index": "idx_review_perf_attendee_overall",
-                                "rows": 47.0962,
-                                "cost": 4.97788,
+                                "rows": 48.8878,
+                                "cost": 5.15775,
                                 "chosen": false
                               },
                               {
                                 "access_type": "scan",
-                                "cost": 986.35,
-                                "rows": 9796,
+                                "cost": 964.7,
+                                "rows": 9582,
                                 "chosen": false,
                                 "cause": "cost"
                               }
@@ -462,36 +462,36 @@ TRACE
                               {
                                 "access_type": "ref",
                                 "index": "perf_id",
-                                "rows": 47.0962,
-                                "cost": 16.4837,
+                                "rows": 48.8878,
+                                "cost": 17.1107,
                                 "chosen": true
                               },
                               {
                                 "access_type": "ref",
                                 "index": "idx_review_perf_io",
-                                "rows": 47.0962,
-                                "cost": 4.97367,
+                                "rows": 48.8878,
+                                "cost": 5.15338,
                                 "chosen": true
                               },
                               {
                                 "access_type": "ref",
                                 "index": "idx_review_perf_attendee_overall",
-                                "rows": 47.0962,
-                                "cost": 4.97788,
+                                "rows": 48.8878,
+                                "cost": 5.15775,
                                 "chosen": false
                               },
                               {
                                 "access_type": "scan",
-                                "cost": 986.35,
-                                "rows": 9796,
+                                "cost": 964.7,
+                                "rows": 9582,
                                 "chosen": false,
                                 "cause": "cost"
                               }
                             ]
                           },
                           "condition_filtering_pct": 100,
-                          "rows_for_plan": 47.0962,
-                          "cost_for_plan": 5.32367,
+                          "rows_for_plan": 48.8878,
+                          "cost_for_plan": 5.50338,
                           "chosen": true
                         }
                       ]
@@ -521,20 +521,20 @@ TRACE
                             "chosen": false
                           },
                           {
-                            "rows_to_scan": 9796,
+                            "rows_to_scan": 9582,
                             "filtering_effect": [
                             ],
                             "final_filtering_effect": 1,
                             "access_type": "scan",
-                            "resulting_rows": 9796,
-                            "cost": 986.35,
+                            "resulting_rows": 9582,
+                            "cost": 964.7,
                             "chosen": true
                           }
                         ]
                       },
                       "condition_filtering_pct": 100,
-                      "rows_for_plan": 9796,
-                      "cost_for_plan": 986.35,
+                      "rows_for_plan": 9582,
+                      "cost_for_plan": 964.7,
                       "pruned_by_cost": true
                     }
                   ]
@@ -762,8 +762,8 @@ TRACE
                     {
                       "table": "`Review` `r`",
                       "table_scan": {
-                        "rows": 9796,
-                        "cost": 6.75
+                        "rows": 9582,
+                        "cost": 6.5
                       }
                     }
                   ]
@@ -813,28 +813,28 @@ TRACE
                               {
                                 "access_type": "ref",
                                 "index": "perf_id",
-                                "rows": 47.0962,
-                                "cost": 16.4837,
+                                "rows": 48.8878,
+                                "cost": 17.1107,
                                 "chosen": true
                               },
                               {
                                 "access_type": "ref",
                                 "index": "idx_review_perf_io",
-                                "rows": 47.0962,
-                                "cost": 4.97367,
+                                "rows": 48.8878,
+                                "cost": 5.15338,
                                 "chosen": true
                               },
                               {
                                 "access_type": "ref",
                                 "index": "idx_review_perf_attendee_overall",
-                                "rows": 47.0962,
-                                "cost": 16.4837,
+                                "rows": 48.8878,
+                                "cost": 17.1107,
                                 "chosen": false
                               },
                               {
                                 "access_type": "scan",
-                                "cost": 986.35,
-                                "rows": 9796,
+                                "cost": 964.7,
+                                "rows": 9582,
                                 "chosen": false,
                                 "cause": "cost"
                               }
@@ -852,36 +852,36 @@ TRACE
                               {
                                 "access_type": "ref",
                                 "index": "perf_id",
-                                "rows": 47.0962,
-                                "cost": 16.4837,
+                                "rows": 48.8878,
+                                "cost": 17.1107,
                                 "chosen": true
                               },
                               {
                                 "access_type": "ref",
                                 "index": "idx_review_perf_io",
-                                "rows": 47.0962,
-                                "cost": 4.97367,
+                                "rows": 48.8878,
+                                "cost": 5.15338,
                                 "chosen": true
                               },
                               {
                                 "access_type": "ref",
                                 "index": "idx_review_perf_attendee_overall",
-                                "rows": 47.0962,
-                                "cost": 16.4837,
+                                "rows": 48.8878,
+                                "cost": 17.1107,
                                 "chosen": false
                               },
                               {
                                 "access_type": "scan",
-                                "cost": 986.35,
-                                "rows": 9796,
+                                "cost": 964.7,
+                                "rows": 9582,
                                 "chosen": false,
                                 "cause": "cost"
                               }
                             ]
                           },
                           "condition_filtering_pct": 100,
-                          "rows_for_plan": 47.0962,
-                          "cost_for_plan": 5.32367,
+                          "rows_for_plan": 48.8878,
+                          "cost_for_plan": 5.50338,
                           "chosen": true
                         }
                       ]
@@ -911,20 +911,20 @@ TRACE
                             "chosen": false
                           },
                           {
-                            "rows_to_scan": 9796,
+                            "rows_to_scan": 9582,
                             "filtering_effect": [
                             ],
                             "final_filtering_effect": 1,
                             "access_type": "scan",
-                            "resulting_rows": 9796,
-                            "cost": 986.35,
+                            "resulting_rows": 9582,
+                            "cost": 964.7,
                             "chosen": true
                           }
                         ]
                       },
                       "condition_filtering_pct": 100,
-                      "rows_for_plan": 9796,
-                      "cost_for_plan": 986.35,
+                      "rows_for_plan": 9582,
+                      "cost_for_plan": 964.7,
                       "pruned_by_cost": true
                     }
                   ]

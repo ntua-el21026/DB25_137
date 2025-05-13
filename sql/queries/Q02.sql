@@ -1,6 +1,4 @@
 -- SQL query for Q2
--- We assume that we are interested in artists that either have performend
--- or will perform in the current year's festival
 
 SELECT
     a.artist_id,
@@ -15,8 +13,7 @@ JOIN Artist_Genre ag ON a.artist_id = ag.artist_id
 JOIN Genre        g  ON ag.genre_id = g.genre_id
 LEFT JOIN View_Artist_Year_Participation ap
     ON ap.artist_id = a.artist_id AND ap.fest_year = YEAR(CURDATE())
-WHERE g.name = 'Jazz' -- or any other genre
-ORDER BY artist_name;
+WHERE g.name = 'Rock' -- or any other genre
 
 -- Indexes used:
 -- idx_perf_artist on Performance_Artist(artist_id, perf_id)

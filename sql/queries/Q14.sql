@@ -24,7 +24,7 @@ SELECT
     year2,
     perf_count
 FROM ConsecutiveMatch
-ORDER BY genre_name, year1;
+ORDER BY genre_name, perf_count, year1;
 
 -- Indexes used (through View_Genre_Year_Counts):
 -- idx_perf_type on Performance(type_id)

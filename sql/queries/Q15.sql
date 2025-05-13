@@ -1,4 +1,6 @@
 -- SQL query for Q15
+-- We assum that the total evaluation for an artists in a review
+-- equals the sum of the fields "interpretation" and "overall"
 
 SELECT
     v.attendee_id,

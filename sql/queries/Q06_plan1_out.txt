@@ -15,14 +15,14 @@ id  select_type  table       partitions  type    possible_keys                  
 ## PLAN 1 — EXPLAIN ANALYZE ##
 EXPLAIN
 -------
--> Table scan on View_Attendee_Event_Rating  (cost=2.5..2.5 rows=0) (actual time=0.0317..0.0317 rows=0 loops=1)
-    -> Materialize  (cost=0..0 rows=0) (actual time=0.0312..0.0312 rows=0 loops=1)
-        -> Table scan on <temporary>  (actual time=0.0171..0.0171 rows=0 loops=1)
-            -> Aggregate using temporary table  (actual time=0.0159..0.0159 rows=0 loops=1)
-                -> Nested loop left join  (cost=27.1 rows=58) (actual time=0.00937..0.00937 rows=0 loops=1)
-                    -> Nested loop inner join  (cost=6.77 rows=58) (actual time=0.00876..0.00876 rows=0 loops=1)
-                        -> Nested loop inner join  (cost=0.7 rows=1) (actual time=0.00876..0.00876 rows=0 loops=1)
-                            -> Covering index lookup on t using attendee_id (attendee_id=69)  (cost=0.35 rows=1) (actual time=0.00815..0.00815 rows=0 loops=1)
+-> Table scan on View_Attendee_Event_Rating  (cost=2.5..2.5 rows=0) (actual time=0.0368..0.0368 rows=0 loops=1)
+    -> Materialize  (cost=0..0 rows=0) (actual time=0.0365..0.0365 rows=0 loops=1)
+        -> Table scan on <temporary>  (actual time=0.0306..0.0306 rows=0 loops=1)
+            -> Aggregate using temporary table  (actual time=0.00706..0.00706 rows=0 loops=1)
+                -> Nested loop left join  (cost=27.1 rows=58) (actual time=0.00408..0.00408 rows=0 loops=1)
+                    -> Nested loop inner join  (cost=6.77 rows=58) (actual time=0.00393..0.00393 rows=0 loops=1)
+                        -> Nested loop inner join  (cost=0.7 rows=1) (actual time=0.00385..0.00385 rows=0 loops=1)
+                            -> Covering index lookup on t using attendee_id (attendee_id=69)  (cost=0.35 rows=1) (actual time=0.00347..0.00347 rows=0 loops=1)
                             -> Single-row index lookup on e using PRIMARY (event_id=t.event_id)  (cost=0.35 rows=1) (never executed)
                         -> Covering index lookup on p using uq_event_seq (event_id=t.event_id)  (cost=6.07 rows=58) (never executed)
                     -> Single-row index lookup on r using perf_id (perf_id=p.perf_id, attendee_id=69)  (cost=0.252 rows=1) (never executed)
@@ -329,8 +329,8 @@ TRACE
                       "table": "`Ticket` `t`",
                       "range_analysis": {
                         "table_scan": {
-                          "rows": 5461,
-                          "cost": 554.2
+                          "rows": 5452,
+                          "cost": 553.55
                         },
                         "potential_range_indexes": [
                           {
@@ -393,7 +393,7 @@ TRACE
                         ],
                         "best_covering_index_scan": {
                           "index": "attendee_id",
-                          "cost": 548.349,
+                          "cost": 547.445,
                           "chosen": true
                         },
                         "setup_range_conditions": [
@@ -498,8 +498,8 @@ TRACE
                       "table": "`Review` `r`",
                       "range_analysis": {
                         "table_scan": {
-                          "rows": 9796,
-                          "cost": 988.45
+                          "rows": 9582,
+                          "cost": 966.8
                         },
                         "potential_range_indexes": [
                           {
@@ -534,7 +534,7 @@ TRACE
                         ],
                         "best_covering_index_scan": {
                           "index": "idx_review_perf_attendee_overall",
-                          "cost": 983.731,
+                          "cost": 962.246,
                           "chosen": true
                         },
                         "setup_range_conditions": [
