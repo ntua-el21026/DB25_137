@@ -98,6 +98,20 @@ def cli(ctx, host, port, root_user, root_pass):
             f"[DB Connection Error] Unable to connect as '{root_user}':\n{err}"
         )
 
+# root-only decorator
+def root_only(cmd):
+    """
+    Mark a Click Command *or* Group as admin‑only.
+
+    IMPORTANT – it must be applied *after* @cli.command / @cli.group,
+    i.e. be the top‑most decorator:
+
+        @cli.command("create-db")
+        @root_only             # ← here
+        def create_db(): ...
+    """
+    cmd.root_only = True
+    return cmd
 
 def require_root(user_mgr: UserManager):
     if not user_mgr.is_root():
@@ -135,6 +149,7 @@ def users():
     """Manage DB users."""
     pass
 
+@root_only
 @users.command("register")
 @click.argument("username")
 @click.password_option("--password", prompt=True, confirmation_prompt=True)
@@ -147,6 +162,7 @@ def register(user_mgr: UserManager, username, password, default_db, privileges):
     user_mgr.register_user(username, password, default_db, parsed_privs)
     click.echo(f"[OK] User '{username}' registered. Use `db137 users list` to verify grants.")
 
+@root_only
 @users.command("grant")
 @click.argument("username")
 @click.option("--db", required=True)
@@ -169,6 +185,7 @@ def grant(user_mgr: UserManager, username, db, privileges, show_diff):
         click.echo(f"After:\n  {username}@% →")
         print_privs(user_mgr, username, db)
 
+@root_only
 @users.command("revoke")
 @click.argument("username")
 @click.option("--db", required=True)
@@ -208,9 +225,11 @@ def passwd_cmd(user_mgr: UserManager, username, new_pass):
     user_mgr.change_password(username, new_pass)
     click.echo("[OK] Password updated.")
 
+@root_only
 @users.command("list")
 @click.pass_obj
 def list_users(user_mgr: UserManager):
+    require_root(user_mgr)
     users = user_mgr.list_users()
     if not users:
         click.echo("No registered users found.")
@@ -218,6 +237,7 @@ def list_users(user_mgr: UserManager):
         for u in users:
             click.echo(f"- {u}")
 
+@root_only
 @users.command("drop")
 @click.argument("username")
 @click.pass_obj
@@ -229,6 +249,7 @@ def drop(user_mgr: UserManager, username):
     user_mgr.drop_user(username)
     click.echo(f"[OK] Dropped user {username}.")
 
+@root_only
 @users.command("drop-all")
 @click.pass_obj
 def drop_all_users(user_mgr: UserManager):
@@ -240,6 +261,7 @@ def whoami(user_mgr: UserManager):
     info = user_mgr.whoami()
     click.echo(f"Connected as: {info}")
 
+@root_only
 @users.command("set-defaults")
 @click.argument("username")
 @click.option("--db", default=DEFAULT_DB, show_default=True)
@@ -267,6 +289,7 @@ def set_defaults(user_mgr: UserManager, username, db, show_diff):
 def _print_ok(msg: str) -> None:
     click.echo(f"[OK] {msg}")
 
+@root_only
 @cli.command("create-db")
 @click.option("--sql-dir", type=click.Path(exists=True, file_okay=False),
                 default=str(DEFAULT_SQL_DIR), show_default=True)
@@ -284,16 +307,19 @@ def create_db(user_mgr: UserManager, sql_dir: str, database: str):
         _print_ok(fname)
     _print_ok("Database schema deployed.")
 
+@root_only
 @cli.command("drop-db")
 @click.option("--database", default=DEFAULT_DB, show_default=True)
 @click.option("--yes", is_flag=True, help="Skip confirmation prompt")
 @click.pass_obj
 def drop_db(user_mgr: UserManager, database: str, yes: bool):
+    require_root(user_mgr)
     if not yes:
         click.confirm(f"Drop entire schema `{database}`?", abort=True)
     user_mgr._execute_sql(f"DROP DATABASE IF EXISTS `{database}`;")
     click.echo(f"[OK] Schema `{database}` dropped.")
 
+@root_only
 @cli.command("load-db")
 @click.option("--g", "use_faker_sql", is_flag=True, help="Run faker_sql.py then load.sql")
 @click.option("--i", "use_faker_intelligent", is_flag=True, help="Run faker.py for full intelligent data")
@@ -333,6 +359,7 @@ def load_db(ctx, use_faker_sql: bool, use_faker_intelligent: bool,
         user_mgr.execute_sql_file(load_path, database=database, show_progress=True)
         _print_ok("Database loaded from load.sql.")
 
+@root_only
 @cli.command("erase-db")
 @click.option("--database", default=DEFAULT_DB, show_default=True)
 @click.option("--yes", is_flag=True, help="Skip confirmation prompt")
@@ -384,9 +411,11 @@ def status(user_mgr: UserManager, database: str):
         for r in rows:
             click.echo(f"{r['name']:<{max_name}} {r['rows']:>6} rows")
 
+@root_only
 @cli.command("reset-db")
 @click.pass_context
 def reset(ctx):
+    require_root(ctx.obj)
     ctx.invoke(drop_db, yes=True)
     ctx.invoke(load_db)
     click.echo("[OK] Database reset complete.")

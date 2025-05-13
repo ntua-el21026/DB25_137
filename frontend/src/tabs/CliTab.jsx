@@ -54,17 +54,22 @@ export default function CliTab() {
 				},
 				body: JSON.stringify({ command: trimmed })
 			});
-			const text = await res.text();
 
-			setHistory(prev => [
-				...prev,
-				{
-					command: trimmed,
-					output: text.trim(),
-					success: res.ok,
-					expanded: true
-				}
-			]);
+			const text = await res.text();
+			const isPermissionError =
+				res.status === 403 ||                       // rely on HTTP code
+				/(?:access|command)\s+denied/i.test(text);  // catch only MySQL errors
+
+			const entry = {
+				command: trimmed,
+				output: isPermissionError
+					? "You do not have permission to run this command."
+					: text.trim(),
+				success: !isPermissionError && res.ok,
+				expanded: true
+			};
+
+			setHistory(prev => [...prev, entry]);
 		} catch (err) {
 			setHistory(prev => [
 				...prev,

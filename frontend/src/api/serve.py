@@ -1,4 +1,6 @@
 from flask import Flask, request, jsonify, Response
+from http import HTTPStatus
+import re
 from flask_cors import CORS
 import mysql.connector
 import os
@@ -20,9 +22,12 @@ from cli.db137 import cli
 app = Flask(__name__)
 CORS(app)
 
+from cli_list import cli_bp
+app.register_blueprint(cli_bp)
+
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = int(os.getenv("DB_PORT", "3306"))
-DEFAULT_DB = "pulse_university"
+DEFAULT_DB = os.getenv("DB_NAME", "pulse_university")
 
 @app.route("/api/login", methods=["POST"])
 def login():
@@ -74,7 +79,7 @@ def browse(table):
 	token = request.headers.get("Authorization")
 	username, password = token.split(":", 1)
 
-	um = UserManager(root_user=username, root_pass=password)
+	um = UserManager(root_user=username, root_pass=password, host=DB_HOST, port=DB_PORT)
 	with um._connect() as conn, conn.cursor(dictionary=True) as cur:
 		try:
 			cur.execute(f"USE {DEFAULT_DB}")
@@ -93,7 +98,7 @@ def run_query():
 	if not sql:
 		return jsonify({"error": "Query is empty"}), 400
 
-	um = UserManager(root_user=username, root_pass=password)
+	um = UserManager(root_user=username, root_pass=password, host=DB_HOST, port=DB_PORT)
 	with um._connect() as conn:
 		is_select = sql.lower().startswith("select")
 		cursor_class = conn.cursor(dictionary=True) if is_select else conn.cursor()
@@ -139,28 +144,6 @@ def trigger_definition(name):
 		return Response(text, mimetype="text/plain")
 	return Response(f"TRIGGER '{name}' not found.", status=404)
 
-@app.route("/api/cli/list", methods=["GET"])
-def list_cli_commands():
-	try:
-		def extract_commands(group, parent=""):
-			results = []
-			for name, cmd in group.commands.items():
-				full = f"{parent} {name}".strip()
-				if isinstance(cmd, click.Group):
-					results += extract_commands(cmd, full)
-				else:
-					description = (cmd.help or cmd.short_help or "").strip()
-					results.append({
-						"name": full,
-						"description": description
-					})
-			return results
-
-		result = extract_commands(cli)
-		return jsonify({"commands": result})
-	except Exception as e:
-		return jsonify({"commands": [], "error": str(e)})
-
 @app.route("/api/cli/run", methods=["POST"])
 def run_cli_command():
 	try:
@@ -178,10 +161,20 @@ def run_cli_command():
 		runner = CliRunner()
 		result = runner.invoke(cli, cmd_parts, env={
 			"DB_ROOT_USER": username,
-			"DB_ROOT_PASS": password
+			"DB_ROOT_PASS": password,
+			"DB_HOST":      DB_HOST,
+			"DB_PORT":      str(DB_PORT)
 		})
 
-		return Response(result.output, status=200 if result.exit_code == 0 else 400)
+		status = HTTPStatus.OK
+		if result.exit_code != 0:
+			# treat MySQL “command / access denied” as 403 so the UI can show a clean banner
+			if re.search(r"(access|command).*denied|permission", result.output, re.I):
+				status = HTTPStatus.FORBIDDEN
+			else:
+				status = HTTPStatus.BAD_REQUEST
+
+		return Response(result.output, status=status)
 	except Exception as e:
 		return Response(str(e), status=500)
 

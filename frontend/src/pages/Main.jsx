@@ -5,6 +5,7 @@ import BrowseTab from "../tabs/BrowseTab";
 import QueryTab from "../tabs/QueryTab";
 import CliTab from "../tabs/CliTab";
 import SessionTimer from "../components/SessionTimer";
+import UserBadge from "../components/UserBadge";
 
 const tabs = ["Schema Overview", "Browse Schema", "Run Query", "Run Cli"];
 
@@ -16,6 +17,10 @@ export default function Main() {
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 text-gray-800">
 			<header className="sticky top-0 bg-white shadow z-10 relative">
+				{/* Username in upper-left */}
+				<UserBadge />
+
+				{/* Logout in upper-right */}
 				<button
 					onClick={() => navigate("/logout")}
 					className="absolute top-4 right-6 flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
