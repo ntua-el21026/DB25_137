@@ -1,7 +1,7 @@
 """
 cli.users.manager
 =================
-Thin wrapper around mysql-connector for managing DB users and running scripts.
+Thin wrapper around mysql-connector for managing DB users and executing scripts.
 
 Public API
 ----------
@@ -9,14 +9,18 @@ Public API
 User management:
 ----------------
 UserManager.register_user(username, password)
-            .grant_privileges(username, db, privs)
-            .revoke_privileges(username, db, privs)
-            .change_username(old, new)
-            .change_password(username, new_pass)
-            .drop_user(username)
-            .list_users()
-            .list_raw_users()
-            .whoami()
+    → Creates user with access from both '%' and 'localhost'
+UserManager.grant_privileges(username, db, privs)
+    → Grants privileges on db for both '%' and 'localhost' entries
+UserManager.revoke_privileges(username, db, privs)
+    → Revokes all privileges on db for both '%' and 'localhost'
+UserManager.change_username(old, new)
+UserManager.change_password(username, new_pass)
+UserManager.drop_user(username)
+    → Removes user entries from both '%' and 'localhost'
+UserManager.list_users()
+UserManager.list_raw_users()
+UserManager.whoami()
 
 Script execution:
 -----------------
@@ -26,8 +30,8 @@ UserManager.run_query_to_file(sql, out, database=.)
 
 Utilities:
 ----------
-parse_priv_list("SELECT,INSERT") -> ["SELECT", "INSERT"]
-parse_priv_list("FULL")          -> ["ALL PRIVILEGES"]
+parse_priv_list("SELECT,INSERT") → ["SELECT", "INSERT"]
+parse_priv_list("FULL")          → ["ALL PRIVILEGES"]
 """
 
 from __future__ import annotations
@@ -46,6 +50,11 @@ from mysql.connector.cursor_cext import CMySQLCursor
 DEFAULT_DB = os.getenv("DB_NAME", "pulse_university")
 
 __all__ = ["UserManager", "parse_priv_list"]
+HOSTS = ('%', 'localhost')
+
+def _foreach_host(fn):
+    for h in HOSTS:
+        fn(h)
 
 # ---------------------------------------------------------------------------- #
 # Utility function – Normalize privilege list (e.g. "SELECT,INSERT")
@@ -184,16 +193,24 @@ class UserManager:
             cnx.commit()
 
     def change_username(self, old: str, new: str) -> None:
+        """
+        Rename a user on *both* '%' and 'localhost'.
+        Non‑root callers may only rename themselves (handled by caller).
+        """
         if self.is_root():
-            self._execute_sql(
-                "RENAME USER %(old)s@'%' TO %(new)s@'%';",
-                {"old": old, "new": new}
-            )
+            for host in ('%', 'localhost'):
+                # Skip missing rows quietly so one orphan does not abort the loop
+                try:
+                    self._execute_sql(
+                        f"RENAME USER %(old)s@'{host}' TO %(new)s@'{host}';",
+                        {"old": old, "new": new}
+                    )
+                except mysql.connector.Error as e:
+                    if e.errno != errorcode.ER_NONEXISTING_GRANT:  # row not found
+                        raise
         else:
-            self._execute_sql(
-                "CALL sp_rename_self(%(new)s);",
-                {"new": new}
-            )
+            # Stored‑procedure path for self‑rename (unchanged)
+            self._execute_sql("CALL sp_rename_self(%(new)s);", {"new": new})
 
     def change_password(self, username: str, new_password: str) -> None:
         current_user = self.connected_user().split("@")[0]
@@ -209,6 +226,8 @@ class UserManager:
                 )
 
     def list_users(self) -> list[str]:
+        if not self.is_root():
+            raise click.ClickException("Only root can list all users.")
         output = []
         with self._connect() as cnx, cnx.cursor() as cur:
             # Select all users and their hosts
@@ -251,63 +270,70 @@ class UserManager:
         privileges: Sequence[str],
     ) -> None:
         """
-        Grant schema-level and global privileges in one call.
+        Grant schema-level and global privileges to both '%' and 'localhost'.
 
-        * schema privileges → GRANT … ON  `database`.* TO  'user'@'%';
-        * global  privileges → GRANT … ON  *.*          TO  'user'@'%';
+        * schema privileges → GRANT … ON  `database`.* TO  'user'@'{host}';
+        * global privileges → GRANT … ON  *.*         TO  'user'@'{host}';
         """
         if not privileges:
             raise ValueError("Privilege list must not be empty.")
 
-        # normalise                                     ▼ NEW
         privs = [p.upper().strip() for p in privileges]
-
         db_privs     = [p for p in privs if p not in self._GLOBAL_PRIVS]
         global_privs = [p for p in privs if p in self._GLOBAL_PRIVS]
 
-        if db_privs:
-            self._execute_sql(
-                f"GRANT {', '.join(db_privs)} ON `{database}`.* TO %(u)s@'%';",
-                {"u": username},
-            )
+        def grant_for_host(host: str):
+            if db_privs:
+                self._execute_sql(
+                    f"GRANT {', '.join(db_privs)} ON `{database}`.* TO %(u)s@'{host}';",
+                    {"u": username},
+                )
+            if global_privs:
+                self._execute_sql(
+                    f"GRANT {', '.join(global_privs)} ON *.* TO %(u)s@'{host}';",
+                    {"u": username},
+                )
 
-        if global_privs:
-            # global privileges must carry the ON *.* clause  ▼ NEW
-            self._execute_sql(
-                f"GRANT {', '.join(global_privs)} ON *.* TO %(u)s@'%';",
-                {"u": username},
-            )
+        _foreach_host(grant_for_host)
 
-    def revoke_privileges(self, username, db, to_revoke):
-        """Revoke specific privileges from a user on a given database."""
+    def revoke_privileges(
+        self,
+        username: str,
+        db: str,
+        to_revoke: Sequence[str],
+    ) -> None:
+        """
+        Revoke specific privileges from both '%' and 'localhost' on the given database.
+        """
+        to_revoke = {p.upper().strip() for p in to_revoke}
+
         with self._connect() as conn:
             with conn.cursor() as cursor:
-                # 1. Get current privileges from INFORMATION_SCHEMA
-                cursor.execute("""
-                    SELECT privilege_type
-                    FROM information_schema.schema_privileges
-                    WHERE grantee = %s AND table_schema = %s
-                """, (f"'{username}'@'%'", db))
-                current = {row[0].upper() for row in cursor.fetchall()}
+                def revoke_for_host(host: str):
+                    cursor.execute("""
+                        SELECT privilege_type
+                        FROM information_schema.schema_privileges
+                        WHERE grantee = %s AND table_schema = %s
+                    """, (f"'{username}'@'{host}'", db))
+                    current = {row[0].upper() for row in cursor.fetchall()}
 
-                if not current:
-                    print(f"[WARN] No privileges found for user '{username}' on database '{db}'")
-                    return
+                    if not current:
+                        print(f"[WARN] No privileges found for '{username}'@'{host}' on '{db}'")
+                        return
 
-                # 2. Compute what remains after revocation
-                remaining = current - set(p.upper() for p in to_revoke)
+                    remaining = current - to_revoke
+                    cursor.execute(
+                        f"REVOKE ALL PRIVILEGES ON `{db}`.* FROM `{username}`@'{host}'")
 
-                # 3. Revoke all privileges on that DB
-                cursor.execute(f"REVOKE ALL PRIVILEGES ON `{db}`.* FROM `{username}`@'%'")
+                    if remaining:
+                        priv_str = ",".join(sorted(remaining))
+                        cursor.execute(
+                            f"GRANT {priv_str} ON `{db}`.* TO `{username}`@'{host}'")
+                        print(f"[OK] {host}: re-granted: {priv_str}")
+                    else:
+                        print(f"[OK] {host}: all privileges revoked from {username} on {db}")
 
-                # 4. Re-grant only the remaining ones
-                if remaining:
-                    priv_str = ",".join(sorted(remaining))
-                    cursor.execute(f"GRANT {priv_str} ON `{db}`.* TO `{username}`@'%'")
-                    print(f"[OK] Re-granted: {priv_str}")
-                else:
-                    print(f"[OK] All privileges revoked from {username} on {db}")
-
+                _foreach_host(revoke_for_host)
             conn.commit()
 
     # ------------------------------------------------------------------------ #

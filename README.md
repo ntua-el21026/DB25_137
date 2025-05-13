@@ -13,7 +13,7 @@ This repository contains the complete implementation of the Pulse University Fes
 ├── docs/              # Report, assignment brief, indexing justification, structure notes
 ├── frontend/          # React + Flask web interface with tabbed schema/query/CLI UI
 ├── sql/               # Database DDL, views, procedures, triggers, and graded queries
-├── test/              # Automated testing of CLI and trigger functionality
+├── test/              # Automated testing of CLI
 └── README.md          # This file
 ```
 
@@ -45,9 +45,9 @@ As per the course specifications, we designed and implemented a **relational dat
   - Views and procedures support advanced query use cases and data maintenance
 
 - **Graded SQL Queries**:
-  - One script per query in `sql/queries/Qx.sql` with results in `Qx_out.txt`
+  - One script per query in `sql/queries/Qx.sql` with results in `Qx_out.txt` (x is a 2-digit number, e.g. 01)
   - Indexed and optimized using `sql/indexing.sql`
-  - Includes trace analysis and query plan tuning for Q4 and Q6, in the respective `.txt` files
+  - Includes trace analysis and query plan tuning for `Q04` and `Q06`, in the respective `plan1_out.txt` and `plan2_out.txt` files
 
 - **Synthetic Data Generation**:
   - `faker.py` (immediate data insertion) and `faker_sql.py` (query generation) create a complete, constraint-compliant festival dataset. In the second case, `load.sql` is used.

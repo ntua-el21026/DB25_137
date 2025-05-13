@@ -41,7 +41,7 @@ export default function Login() {
 	};
 
 	return (
-		<div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-sky-100 to-blue-200">
+		<div className="flex items-center justify-center h-screen bg-gradient-to-br from-blue-50 to-blue-100 text-gray-700">
 			<form onSubmit={handleLogin} className="bg-white shadow-lg rounded-xl px-8 py-6 w-96">
 				<img src="/logo.jpg" alt="Pulse University Logo" className="h-20 w-20 mx-auto mb-4 rounded-full object-cover border border-blue-300 shadow-sm" />
 
