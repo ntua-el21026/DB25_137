@@ -1,18 +1,18 @@
 -- SQL query for Q4
 SELECT artist_id, artist_name, avg_interpretation, avg_overall
 FROM View_Artist_Performance_Rating
-WHERE artist_id = 42;
+WHERE artist_id = 7;
 
 -- Analysis of the simple query
 EXPLAIN
 SELECT artist_id, artist_name, avg_interpretation, avg_overall
 FROM View_Artist_Performance_Rating
-WHERE artist_id = 42;
+WHERE artist_id = 7;
 
 EXPLAIN ANALYZE
 SELECT artist_id, artist_name, avg_interpretation, avg_overall
 FROM View_Artist_Performance_Rating
-WHERE artist_id = 42;
+WHERE artist_id = 7;
 
 SELECT TRACE FROM information_schema.optimizer_trace LIMIT 1;
 
@@ -25,7 +25,7 @@ SELECT
 FROM Artist a
 JOIN Performance_Artist pa FORCE INDEX (idx_perf_artist) ON a.artist_id = pa.artist_id
 JOIN Review r FORCE INDEX (idx_review_perf_io) ON pa.perf_id = r.perf_id
-WHERE a.artist_id = 42
+WHERE a.artist_id = 7
 GROUP BY a.artist_id, artist_name;
 
 -- Analysis of the alternate plan
@@ -38,7 +38,7 @@ SELECT
 FROM Artist a
 JOIN Performance_Artist pa FORCE INDEX (idx_perf_artist) ON a.artist_id = pa.artist_id
 JOIN Review r FORCE INDEX (idx_review_perf_io) ON pa.perf_id = r.perf_id
-WHERE a.artist_id = 42
+WHERE a.artist_id = 7
 GROUP BY a.artist_id, artist_name;
 
 EXPLAIN ANALYZE
@@ -50,7 +50,7 @@ SELECT
 FROM Artist a
 JOIN Performance_Artist pa FORCE INDEX (idx_perf_artist) ON a.artist_id = pa.artist_id
 JOIN Review r FORCE INDEX (idx_review_perf_io) ON pa.perf_id = r.perf_id
-WHERE a.artist_id = 42
+WHERE a.artist_id = 7
 GROUP BY a.artist_id, artist_name;
 
 SELECT TRACE FROM information_schema.optimizer_trace LIMIT 1;

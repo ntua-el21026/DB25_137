@@ -1,18 +1,18 @@
 -- SQL query for Q6
 SELECT event_id, event_title, avg_event_rating
 FROM View_Attendee_Event_Rating
-WHERE attendee_id = 69;
+WHERE attendee_id = 42;
 
 -- Analysis od the simple plan
 EXPLAIN
 SELECT event_id, event_title, avg_event_rating
 FROM View_Attendee_Event_Rating
-WHERE attendee_id = 69;
+WHERE attendee_id = 42;
 
 EXPLAIN ANALYZE
 SELECT event_id, event_title, avg_event_rating
 FROM View_Attendee_Event_Rating
-WHERE attendee_id = 69;
+WHERE attendee_id = 42;
 
 SELECT TRACE FROM information_schema.optimizer_trace LIMIT 1;
 
@@ -28,7 +28,7 @@ JOIN Performance p   ON p.event_id      = e.event_id
 LEFT JOIN Review r FORCE INDEX (idx_review_attendee_overall) 
                      ON r.perf_id       = p.perf_id
                     AND r.attendee_id   = att.attendee_id
-WHERE t.attendee_id = 69
+WHERE t.attendee_id = 42
 GROUP BY e.event_id, e.title;
 
 -- Explain of the alternative plan
@@ -44,7 +44,7 @@ JOIN Performance p   ON p.event_id      = e.event_id
 LEFT JOIN Review r FORCE INDEX (idx_review_attendee_overall) 
                      ON r.perf_id       = p.perf_id
                     AND r.attendee_id   = att.attendee_id
-WHERE t.attendee_id = 69
+WHERE t.attendee_id = 42
 GROUP BY e.event_id, e.title;
 
 EXPLAIN ANALYZE
@@ -59,7 +59,7 @@ JOIN Performance p   ON p.event_id      = e.event_id
 LEFT JOIN Review r FORCE INDEX (idx_review_attendee_overall) 
                      ON r.perf_id       = p.perf_id
                     AND r.attendee_id   = att.attendee_id
-WHERE t.attendee_id = 69
+WHERE t.attendee_id = 42
 GROUP BY e.event_id, e.title;
 
 SELECT TRACE FROM information_schema.optimizer_trace LIMIT 1;

@@ -1,24 +1,24 @@
 
 ## PLAN 1 — RESULT ##
-artist_id  artist_name        avg_interpretation  avg_overall
----------  -----------------  ------------------  -----------
-42         Artist41 Lastname  NULL                NULL
+artist_id  artist_name       avg_interpretation  avg_overall
+---------  ----------------  ------------------  -----------
+7          Artist6 Lastname  3.0139              3.0028
 
 ## PLAN 1 — EXPLAIN ##
 id  select_type         table       partitions  type    possible_keys                                                key                 key_len  ref                          rows  filtered  Extra      
 --  ------------------  ----------  ----------  ------  -----------------------------------------------------------  ------------------  -------  ---------------------------  ----  --------  -----------
 1   PRIMARY             <derived2>  NULL        system  NULL                                                         NULL                NULL     NULL                         1     100.0     NULL
 2   DERIVED             a           NULL        const   PRIMARY                                                      PRIMARY             4        const                        1     100.0     NULL
-3   DEPENDENT SUBQUERY  pa          NULL        ref     PRIMARY,idx_perf_artist                                      idx_perf_artist     4        const                        1     100.0     Using index
+3   DEPENDENT SUBQUERY  pa          NULL        ref     PRIMARY,idx_perf_artist                                      idx_perf_artist     4        const                        13    100.0     Using index
 3   DEPENDENT SUBQUERY  r           NULL        ref     perf_id,idx_review_perf_io,idx_review_perf_attendee_overall  idx_review_perf_io  4        pulse_university.pa.perf_id  48    100.0     Using index
-4   DEPENDENT SUBQUERY  pa          NULL        ref     PRIMARY,idx_perf_artist                                      idx_perf_artist     4        const                        1     100.0     Using index
+4   DEPENDENT SUBQUERY  pa          NULL        ref     PRIMARY,idx_perf_artist                                      idx_perf_artist     4        const                        13    100.0     Using index
 4   DEPENDENT SUBQUERY  r           NULL        ref     perf_id,idx_review_perf_io,idx_review_perf_attendee_overall  idx_review_perf_io  4        pulse_university.pa.perf_id  48    100.0     Using index
-5   DEPENDENT SUBQUERY  pa          NULL        ref     PRIMARY,idx_perf_artist                                      idx_perf_artist     4        const                        1     100.0     Using index
+5   DEPENDENT SUBQUERY  pa          NULL        ref     PRIMARY,idx_perf_artist                                      idx_perf_artist     4        const                        13    100.0     Using index
 
 ## PLAN 1 — EXPLAIN ANALYZE ##
 EXPLAIN
 -------
--> Rows fetched before execution  (cost=0..0 rows=1) (actual time=59e-6..97e-6 rows=1 loops=1)
+-> Rows fetched before execution  (cost=0..0 rows=1) (actual time=54e-6..74e-6 rows=1 loops=1)
 
 
 ## PLAN 1 — OPTIMIZER_TRACE ##
@@ -78,7 +78,7 @@ TRACE
             }
           },
           {
-            "expanded_query": "/* select#1 */ select `View_Artist_Performance_Rating`.`artist_id` AS `artist_id`,`View_Artist_Performance_Rating`.`artist_name` AS `artist_name`,`View_Artist_Performance_Rating`.`avg_interpretation` AS `avg_interpretation`,`View_Artist_Performance_Rating`.`avg_overall` AS `avg_overall` from `View_Artist_Performance_Rating` where (`View_Artist_Performance_Rating`.`artist_id` = 42)"
+            "expanded_query": "/* select#1 */ select `View_Artist_Performance_Rating`.`artist_id` AS `artist_id`,`View_Artist_Performance_Rating`.`artist_name` AS `artist_name`,`View_Artist_Performance_Rating`.`avg_interpretation` AS `avg_interpretation`,`View_Artist_Performance_Rating`.`avg_overall` AS `avg_overall` from `View_Artist_Performance_Rating` where (`View_Artist_Performance_Rating`.`artist_id` = 7)"
           },
           {
             "transformations_to_nested_joins": {
@@ -101,14 +101,14 @@ TRACE
           {
             "condition_pushdown_to_derived": {
               "table": "`View_Artist_Performance_Rating`",
-              "original_condition": "(`View_Artist_Performance_Rating`.`artist_id` = 42)",
-              "condition_to_push": "(`View_Artist_Performance_Rating`.`artist_id` = 42)",
+              "original_condition": "(`View_Artist_Performance_Rating`.`artist_id` = 7)",
+              "condition_to_push": "(`View_Artist_Performance_Rating`.`artist_id` = 7)",
               "remaining_condition": null,
               "pushdown_to_query_blocks": [
                 {
                   "query_block": 2,
                   "pushed_having_condition": null,
-                  "pushed_where_condition": "(`View_Artist_Performance_Rating`.`artist_id` = 42)",
+                  "pushed_where_condition": "(`View_Artist_Performance_Rating`.`artist_id` = 7)",
                   "remaining_condition": null
                 }
               ]
@@ -128,19 +128,19 @@ TRACE
                 {
                   "condition_processing": {
                     "condition": "WHERE",
-                    "original_condition": "(`a`.`artist_id` = 42)",
+                    "original_condition": "(`a`.`artist_id` = 7)",
                     "steps": [
                       {
                         "transformation": "equality_propagation",
-                        "resulting_condition": "multiple equal(42, `a`.`artist_id`)"
+                        "resulting_condition": "multiple equal(7, `a`.`artist_id`)"
                       },
                       {
                         "transformation": "constant_propagation",
-                        "resulting_condition": "multiple equal(42, `a`.`artist_id`)"
+                        "resulting_condition": "multiple equal(7, `a`.`artist_id`)"
                       },
                       {
                         "transformation": "trivial_condition_removal",
-                        "resulting_condition": "multiple equal(42, `a`.`artist_id`)"
+                        "resulting_condition": "multiple equal(7, `a`.`artist_id`)"
                       }
                     ]
                   }
@@ -165,7 +165,7 @@ TRACE
                     {
                       "table": "`Artist` `a`",
                       "field": "artist_id",
-                      "equals": "42",
+                      "equals": "7",
                       "null_rejecting": true
                     }
                   ]
@@ -208,19 +208,19 @@ TRACE
                 {
                   "condition_processing": {
                     "condition": "WHERE",
-                    "original_condition": "((`pa`.`artist_id` = '42') and (`pa`.`perf_id` = `r`.`perf_id`))",
+                    "original_condition": "((`pa`.`artist_id` = '7') and (`pa`.`perf_id` = `r`.`perf_id`))",
                     "steps": [
                       {
                         "transformation": "equality_propagation",
-                        "resulting_condition": "(multiple equal('42', `pa`.`artist_id`) and multiple equal(`pa`.`perf_id`, `r`.`perf_id`))"
+                        "resulting_condition": "(multiple equal('7', `pa`.`artist_id`) and multiple equal(`pa`.`perf_id`, `r`.`perf_id`))"
                       },
                       {
                         "transformation": "constant_propagation",
-                        "resulting_condition": "(multiple equal('42', `pa`.`artist_id`) and multiple equal(`pa`.`perf_id`, `r`.`perf_id`))"
+                        "resulting_condition": "(multiple equal('7', `pa`.`artist_id`) and multiple equal(`pa`.`perf_id`, `r`.`perf_id`))"
                       },
                       {
                         "transformation": "trivial_condition_removal",
-                        "resulting_condition": "(multiple equal('42', `pa`.`artist_id`) and multiple equal(`pa`.`perf_id`, `r`.`perf_id`))"
+                        "resulting_condition": "(multiple equal('7', `pa`.`artist_id`) and multiple equal(`pa`.`perf_id`, `r`.`perf_id`))"
                       }
                     ]
                   }
@@ -258,13 +258,13 @@ TRACE
                     {
                       "table": "`Performance_Artist` `pa`",
                       "field": "artist_id",
-                      "equals": "'42'",
+                      "equals": "'7'",
                       "null_rejecting": true
                     },
                     {
                       "table": "`Performance_Artist` `pa`",
                       "field": "artist_id",
-                      "equals": "'42'",
+                      "equals": "'7'",
                       "null_rejecting": true
                     },
                     {
@@ -337,15 +337,15 @@ TRACE
                             {
                               "index": "idx_perf_artist",
                               "ranges": [
-                                "artist_id = 42"
+                                "artist_id = 7"
                               ],
                               "index_dives_for_eq_ranges": true,
                               "rowid_ordered": true,
                               "using_mrr": false,
                               "index_only": true,
                               "in_memory": 1,
-                              "rows": 1,
-                              "cost": 0.36,
+                              "rows": 13,
+                              "cost": 1.56585,
                               "chosen": true
                             }
                           ],
@@ -358,13 +358,13 @@ TRACE
                           "range_access_plan": {
                             "type": "range_scan",
                             "index": "idx_perf_artist",
-                            "rows": 1,
+                            "rows": 13,
                             "ranges": [
-                              "artist_id = 42"
+                              "artist_id = 7"
                             ]
                           },
-                          "rows_for_plan": 1,
-                          "cost_for_plan": 0.36,
+                          "rows_for_plan": 13,
+                          "cost_for_plan": 1.56585,
                           "chosen": true
                         }
                       }
@@ -395,8 +395,8 @@ TRACE
                           {
                             "access_type": "ref",
                             "index": "idx_perf_artist",
-                            "rows": 1,
-                            "cost": 0.35,
+                            "rows": 13,
+                            "cost": 1.55585,
                             "chosen": true
                           },
                           {
@@ -410,8 +410,8 @@ TRACE
                         ]
                       },
                       "condition_filtering_pct": 100,
-                      "rows_for_plan": 1,
-                      "cost_for_plan": 0.35,
+                      "rows_for_plan": 13,
+                      "cost_for_plan": 1.55585,
                       "rest_of_plan": [
                         {
                           "plan_prefix": [
@@ -424,60 +424,21 @@ TRACE
                                 "access_type": "ref",
                                 "index": "perf_id",
                                 "rows": 48.8878,
-                                "cost": 17.1107,
+                                "cost": 222.439,
                                 "chosen": true
                               },
                               {
                                 "access_type": "ref",
                                 "index": "idx_review_perf_io",
                                 "rows": 48.8878,
-                                "cost": 5.15338,
+                                "cost": 66.9939,
                                 "chosen": true
                               },
                               {
                                 "access_type": "ref",
                                 "index": "idx_review_perf_attendee_overall",
                                 "rows": 48.8878,
-                                "cost": 5.15775,
-                                "chosen": false
-                              },
-                              {
-                                "access_type": "scan",
-                                "cost": 964.7,
-                                "rows": 9582,
-                                "chosen": false,
-                                "cause": "cost"
-                              }
-                            ]
-                          },
-                          "added_to_eq_ref_extension": false
-                        },
-                        {
-                          "plan_prefix": [
-                            "`Performance_Artist` `pa`"
-                          ],
-                          "table": "`Review` `r`",
-                          "best_access_path": {
-                            "considered_access_paths": [
-                              {
-                                "access_type": "ref",
-                                "index": "perf_id",
-                                "rows": 48.8878,
-                                "cost": 17.1107,
-                                "chosen": true
-                              },
-                              {
-                                "access_type": "ref",
-                                "index": "idx_review_perf_io",
-                                "rows": 48.8878,
-                                "cost": 5.15338,
-                                "chosen": true
-                              },
-                              {
-                                "access_type": "ref",
-                                "index": "idx_review_perf_attendee_overall",
-                                "rows": 48.8878,
-                                "cost": 5.15775,
+                                "cost": 67.0507,
                                 "chosen": false
                               },
                               {
@@ -490,8 +451,8 @@ TRACE
                             ]
                           },
                           "condition_filtering_pct": 100,
-                          "rows_for_plan": 48.8878,
-                          "cost_for_plan": 5.50338,
+                          "rows_for_plan": 635.541,
+                          "cost_for_plan": 68.5497,
                           "chosen": true
                         }
                       ]
@@ -541,13 +502,13 @@ TRACE
                 },
                 {
                   "attaching_conditions_to_tables": {
-                    "original_condition": "((`r`.`perf_id` = `pa`.`perf_id`) and (`pa`.`artist_id` = '42'))",
+                    "original_condition": "((`r`.`perf_id` = `pa`.`perf_id`) and (`pa`.`artist_id` = '7'))",
                     "attached_conditions_computation": [
                     ],
                     "attached_conditions_summary": [
                       {
                         "table": "`Performance_Artist` `pa`",
-                        "attached": "(`pa`.`artist_id` = '42')"
+                        "attached": "(`pa`.`artist_id` = '7')"
                       },
                       {
                         "table": "`Review` `r`",
@@ -564,7 +525,7 @@ TRACE
                   "finalizing_table_conditions": [
                     {
                       "table": "`Performance_Artist` `pa`",
-                      "original_table_condition": "(`pa`.`artist_id` = '42')",
+                      "original_table_condition": "(`pa`.`artist_id` = '7')",
                       "final_table_condition   ": null
                     },
                     {
@@ -598,19 +559,19 @@ TRACE
                 {
                   "condition_processing": {
                     "condition": "WHERE",
-                    "original_condition": "((`pa`.`artist_id` = '42') and (`pa`.`perf_id` = `r`.`perf_id`))",
+                    "original_condition": "((`pa`.`artist_id` = '7') and (`pa`.`perf_id` = `r`.`perf_id`))",
                     "steps": [
                       {
                         "transformation": "equality_propagation",
-                        "resulting_condition": "(multiple equal('42', `pa`.`artist_id`) and multiple equal(`pa`.`perf_id`, `r`.`perf_id`))"
+                        "resulting_condition": "(multiple equal('7', `pa`.`artist_id`) and multiple equal(`pa`.`perf_id`, `r`.`perf_id`))"
                       },
                       {
                         "transformation": "constant_propagation",
-                        "resulting_condition": "(multiple equal('42', `pa`.`artist_id`) and multiple equal(`pa`.`perf_id`, `r`.`perf_id`))"
+                        "resulting_condition": "(multiple equal('7', `pa`.`artist_id`) and multiple equal(`pa`.`perf_id`, `r`.`perf_id`))"
                       },
                       {
                         "transformation": "trivial_condition_removal",
-                        "resulting_condition": "(multiple equal('42', `pa`.`artist_id`) and multiple equal(`pa`.`perf_id`, `r`.`perf_id`))"
+                        "resulting_condition": "(multiple equal('7', `pa`.`artist_id`) and multiple equal(`pa`.`perf_id`, `r`.`perf_id`))"
                       }
                     ]
                   }
@@ -648,13 +609,13 @@ TRACE
                     {
                       "table": "`Performance_Artist` `pa`",
                       "field": "artist_id",
-                      "equals": "'42'",
+                      "equals": "'7'",
                       "null_rejecting": true
                     },
                     {
                       "table": "`Performance_Artist` `pa`",
                       "field": "artist_id",
-                      "equals": "'42'",
+                      "equals": "'7'",
                       "null_rejecting": true
                     },
                     {
@@ -727,15 +688,15 @@ TRACE
                             {
                               "index": "idx_perf_artist",
                               "ranges": [
-                                "artist_id = 42"
+                                "artist_id = 7"
                               ],
                               "index_dives_for_eq_ranges": true,
                               "rowid_ordered": true,
                               "using_mrr": false,
                               "index_only": true,
                               "in_memory": 1,
-                              "rows": 1,
-                              "cost": 0.36,
+                              "rows": 13,
+                              "cost": 1.56585,
                               "chosen": true
                             }
                           ],
@@ -748,13 +709,13 @@ TRACE
                           "range_access_plan": {
                             "type": "range_scan",
                             "index": "idx_perf_artist",
-                            "rows": 1,
+                            "rows": 13,
                             "ranges": [
-                              "artist_id = 42"
+                              "artist_id = 7"
                             ]
                           },
-                          "rows_for_plan": 1,
-                          "cost_for_plan": 0.36,
+                          "rows_for_plan": 13,
+                          "cost_for_plan": 1.56585,
                           "chosen": true
                         }
                       }
@@ -785,8 +746,8 @@ TRACE
                           {
                             "access_type": "ref",
                             "index": "idx_perf_artist",
-                            "rows": 1,
-                            "cost": 0.35,
+                            "rows": 13,
+                            "cost": 1.55585,
                             "chosen": true
                           },
                           {
@@ -800,8 +761,8 @@ TRACE
                         ]
                       },
                       "condition_filtering_pct": 100,
-                      "rows_for_plan": 1,
-                      "cost_for_plan": 0.35,
+                      "rows_for_plan": 13,
+                      "cost_for_plan": 1.55585,
                       "rest_of_plan": [
                         {
                           "plan_prefix": [
@@ -814,60 +775,21 @@ TRACE
                                 "access_type": "ref",
                                 "index": "perf_id",
                                 "rows": 48.8878,
-                                "cost": 17.1107,
+                                "cost": 222.439,
                                 "chosen": true
                               },
                               {
                                 "access_type": "ref",
                                 "index": "idx_review_perf_io",
                                 "rows": 48.8878,
-                                "cost": 5.15338,
+                                "cost": 66.9939,
                                 "chosen": true
                               },
                               {
                                 "access_type": "ref",
                                 "index": "idx_review_perf_attendee_overall",
                                 "rows": 48.8878,
-                                "cost": 17.1107,
-                                "chosen": false
-                              },
-                              {
-                                "access_type": "scan",
-                                "cost": 964.7,
-                                "rows": 9582,
-                                "chosen": false,
-                                "cause": "cost"
-                              }
-                            ]
-                          },
-                          "added_to_eq_ref_extension": false
-                        },
-                        {
-                          "plan_prefix": [
-                            "`Performance_Artist` `pa`"
-                          ],
-                          "table": "`Review` `r`",
-                          "best_access_path": {
-                            "considered_access_paths": [
-                              {
-                                "access_type": "ref",
-                                "index": "perf_id",
-                                "rows": 48.8878,
-                                "cost": 17.1107,
-                                "chosen": true
-                              },
-                              {
-                                "access_type": "ref",
-                                "index": "idx_review_perf_io",
-                                "rows": 48.8878,
-                                "cost": 5.15338,
-                                "chosen": true
-                              },
-                              {
-                                "access_type": "ref",
-                                "index": "idx_review_perf_attendee_overall",
-                                "rows": 48.8878,
-                                "cost": 17.1107,
+                                "cost": 222.439,
                                 "chosen": false
                               },
                               {
@@ -880,8 +802,8 @@ TRACE
                             ]
                           },
                           "condition_filtering_pct": 100,
-                          "rows_for_plan": 48.8878,
-                          "cost_for_plan": 5.50338,
+                          "rows_for_plan": 635.541,
+                          "cost_for_plan": 68.5497,
                           "chosen": true
                         }
                       ]
@@ -931,13 +853,13 @@ TRACE
                 },
                 {
                   "attaching_conditions_to_tables": {
-                    "original_condition": "((`r`.`perf_id` = `pa`.`perf_id`) and (`pa`.`artist_id` = '42'))",
+                    "original_condition": "((`r`.`perf_id` = `pa`.`perf_id`) and (`pa`.`artist_id` = '7'))",
                     "attached_conditions_computation": [
                     ],
                     "attached_conditions_summary": [
                       {
                         "table": "`Performance_Artist` `pa`",
-                        "attached": "(`pa`.`artist_id` = '42')"
+                        "attached": "(`pa`.`artist_id` = '7')"
                       },
                       {
                         "table": "`Review` `r`",
@@ -954,7 +876,7 @@ TRACE
                   "finalizing_table_conditions": [
                     {
                       "table": "`Performance_Artist` `pa`",
-                      "original_table_condition": "(`pa`.`artist_id` = '42')",
+                      "original_table_condition": "(`pa`.`artist_id` = '7')",
                       "final_table_condition   ": null
                     },
                     {
@@ -988,19 +910,19 @@ TRACE
                 {
                   "condition_processing": {
                     "condition": "WHERE",
-                    "original_condition": "(`pa`.`artist_id` = '42')",
+                    "original_condition": "(`pa`.`artist_id` = '7')",
                     "steps": [
                       {
                         "transformation": "equality_propagation",
-                        "resulting_condition": "multiple equal('42', `pa`.`artist_id`)"
+                        "resulting_condition": "multiple equal('7', `pa`.`artist_id`)"
                       },
                       {
                         "transformation": "constant_propagation",
-                        "resulting_condition": "multiple equal('42', `pa`.`artist_id`)"
+                        "resulting_condition": "multiple equal('7', `pa`.`artist_id`)"
                       },
                       {
                         "transformation": "trivial_condition_removal",
-                        "resulting_condition": "multiple equal('42', `pa`.`artist_id`)"
+                        "resulting_condition": "multiple equal('7', `pa`.`artist_id`)"
                       }
                     ]
                   }
@@ -1025,7 +947,7 @@ TRACE
                     {
                       "table": "`Performance_Artist` `pa`",
                       "field": "artist_id",
-                      "equals": "'42'",
+                      "equals": "'7'",
                       "null_rejecting": true
                     }
                   ]
@@ -1100,15 +1022,15 @@ TRACE
                             {
                               "index": "idx_perf_artist",
                               "ranges": [
-                                "artist_id = 42"
+                                "artist_id = 7"
                               ],
                               "index_dives_for_eq_ranges": true,
                               "rowid_ordered": true,
                               "using_mrr": false,
                               "index_only": true,
                               "in_memory": 1,
-                              "rows": 1,
-                              "cost": 0.36,
+                              "rows": 13,
+                              "cost": 1.56585,
                               "chosen": true
                             }
                           ],
@@ -1121,13 +1043,13 @@ TRACE
                           "range_access_plan": {
                             "type": "range_scan",
                             "index": "idx_perf_artist",
-                            "rows": 1,
+                            "rows": 13,
                             "ranges": [
-                              "artist_id = 42"
+                              "artist_id = 7"
                             ]
                           },
-                          "rows_for_plan": 1,
-                          "cost_for_plan": 0.36,
+                          "rows_for_plan": 13,
+                          "cost_for_plan": 1.56585,
                           "chosen": true
                         }
                       }
@@ -1145,8 +1067,8 @@ TRACE
                           {
                             "access_type": "ref",
                             "index": "idx_perf_artist",
-                            "rows": 1,
-                            "cost": 0.35,
+                            "rows": 13,
+                            "cost": 1.55585,
                             "chosen": true
                           },
                           {
@@ -1160,21 +1082,21 @@ TRACE
                         ]
                       },
                       "condition_filtering_pct": 100,
-                      "rows_for_plan": 1,
-                      "cost_for_plan": 0.35,
+                      "rows_for_plan": 13,
+                      "cost_for_plan": 1.55585,
                       "chosen": true
                     }
                   ]
                 },
                 {
                   "attaching_conditions_to_tables": {
-                    "original_condition": "(`pa`.`artist_id` = '42')",
+                    "original_condition": "(`pa`.`artist_id` = '7')",
                     "attached_conditions_computation": [
                     ],
                     "attached_conditions_summary": [
                       {
                         "table": "`Performance_Artist` `pa`",
-                        "attached": "(`pa`.`artist_id` = '42')"
+                        "attached": "(`pa`.`artist_id` = '7')"
                       }
                     ]
                   }
@@ -1187,7 +1109,7 @@ TRACE
                   "finalizing_table_conditions": [
                     {
                       "table": "`Performance_Artist` `pa`",
-                      "original_table_condition": "(`pa`.`artist_id` = '42')",
+                      "original_table_condition": "(`pa`.`artist_id` = '7')",
                       "final_table_condition   ": null
                     }
                   ]
