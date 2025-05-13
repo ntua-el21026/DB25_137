@@ -168,7 +168,7 @@ CREATE VIEW View_Attendee_Artist_Review AS
 SELECT
     r.attendee_id,
     pa.artist_id,
-    SUM(r.overall) AS total_score
+    SUM(r. interpretation + r.overall) AS total_score
 FROM Review r
 JOIN Performance_Artist pa ON r.perf_id = pa.perf_id
 GROUP BY r.attendee_id, pa.artist_id;
