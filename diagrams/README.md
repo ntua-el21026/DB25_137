@@ -11,5 +11,3 @@ This folder contains the visual documentation of the Pulse University database s
   - Indexing strategy (see `sql/indexing.sql`)
   - Triggers (see `sql/triggers.sql`)
   - Views (see `sql/views.sql`)
-
----

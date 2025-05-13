@@ -381,5 +381,3 @@ db137 <command>
   ```bash
   db137 q 1 5 --database pulse_university
   ```
-
----

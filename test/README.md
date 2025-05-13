@@ -26,5 +26,3 @@ chmod +x test_cli.sh
 3. Check the results in `test_cli_results.txt`.
 
 > Ensure your database has been freshly installed (`db137 create-db`) before running trigger tests.
-
----

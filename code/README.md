@@ -47,5 +47,3 @@ This folder contains utility scripts used to generate and maintain the SQL files
 
 - `qgen.py` skips files that already exist **and contain content** to protect work.
 - `runall.py` is the master entry point for reproducibly rebuilding generated files.
-
----

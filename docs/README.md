@@ -19,10 +19,7 @@ This folder contains supporting documentation for the semester project.
   - **Procedures**: Stored procedures from `procedures.sql` (e.g., for ticket updates, staff coverage, event maintenance).
   - **Views**: Predefined views from `views.sql` used to support complex queries.
 
-
 - **`organization/`**: Reference materials and design notes:
   - `cardinality_constraints.txt`: Participation and cardinality assumptions
   - `project_structure.txt`: Filesystem layout and deliverable organization
   - `db_data.txt`: Summary of generated data from `faker.py`
-
----

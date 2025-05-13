@@ -103,6 +103,4 @@ Open your browser at:
 - **View Schema**: Browse tables, views, procedures, and triggers; inspect definitions
 - **Browse Table Data**: Select a table and preview up to 100 rows; export as CSV/TXT
 - **Run SQL Queries**: Use the built-in query console with syntax highlighting
-- **Run CLI Commands**: Submit CLI commands like `db137 q1`, `db 137 users list`, `db137 create-db`, etc., and view their live output
-
----
+- **Run CLI Commands**: Submit CLI commands like `db137 q 1`, `db 137 users list`, `db137 create-db`, etc., and view their live output
