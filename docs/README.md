@@ -11,7 +11,11 @@ This folder contains supporting documentation for the semester project.
   - Join strategy discussion (e.g., Nested Loop, Hash Join, Merge Join)
   - Justification of indexing and schema choices
   - Screenshots and diagrams as needed
+
+- **`main.tex`**: The LaTeX source code for the final report (`report.pdf`). Includes modular sections for each subsystem (schema, faker, CLI, frontend) and figures.
+
 - **`assignment.pdf`**: The official project description and grading criteria for the Pulse University Festival database assignment.
+
 - **`ddl.pdf`**: Full database schema including all core SQL definitions:
   - **Schema DDL**: Complete `install.sql` schema — all entities, attributes, constraints, and relationships.
   - **Indexing**: Definitions from `indexing.sql` including all performance-optimized indexes (e.g., for Q1–Q15).

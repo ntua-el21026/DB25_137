@@ -1,5 +1,5 @@
 genre_id1  genre_name_1  genre_id2  genre_name_2  artist_count
 ---------  ------------  ---------  ------------  ------------
 1          Rock          2          Pop           10
-1          Rock          3          Jazz          2
-8          Latin         9          Metal         2
+1          Rock          9          Metal         3
+5          Electronic    8          Latin         3

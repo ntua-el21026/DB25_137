@@ -47,7 +47,8 @@ CAPACITY                 = 100
 SEC_PER_EVENT, SUP_PER_EVENT = 5, 2
 MIN_EVT, MAX_EVT         = 4, 6
 MIN_PERF, MAX_PERF       = 3, 6
-WARM_MIN, SET_MIN, BREAK = 30, 45, 10
+WARM_MIN, SET_MIN        = 30, 45
+BREAK_MIN, BREAK_MAX     = 5, 30
 START_TIME               = time(18, 0)
 EARLIEST, LATEST         = 2016, 2027
 TODAY                    = date(2025, 5, 8)
@@ -116,18 +117,84 @@ def ok_seq(years: List[int], new: int, limit: int = 3) -> bool:
     return best <= limit
 
 def add_perf(ev_id: int, day: date, seq: int, total: int) -> int:
-    ptype = ("warm up" if seq == 1 else "headline" if seq == total else "other")
-    dur   = WARM_MIN if seq == 1 else SET_MIN
-    p_dt  = datetime.combine(day, START_TIME) + timedelta(minutes=(seq - 1) * (dur + BREAK))
-    pid = write_sql(
-        """INSERT INTO Performance
-            (type_id, datetime, duration, break_duration,
-             stage_id, event_id, sequence_number)
-          VALUES (%s,%s,%s,%s,%s,%s,%s)""",
-        (perf_type[ptype], p_dt, dur, BREAK,
-         stage_of_year[p_dt.year], ev_id, seq)
+    """
+    Generate the INSERT SQL for one Performance, returning its new ID.
+    • type_id: "warm up" / "other" / "headline"
+    • duration: WARM_MIN if first slot, else SET_MIN
+    • break_duration: random between BREAK_MIN and BREAK_MAX
+    • datetime: START_TIME + (seq-1) * (duration + that slot’s break)
+    """
+    # pick type and duration
+    ptype = (
+        "warm up"  if seq == 1
+        else "headline" if seq == total
+        else "other"
     )
-    return pid  # so we can track perf IDs in-memory
+    dur = WARM_MIN if seq == 1 else SET_MIN
+
+    # randomize the break for this slot
+    break_dur = random.randint(BREAK_MIN, BREAK_MAX)
+
+    # compute actual start time by packing previous (dur + break) slots
+    slot_length = dur + break_dur
+    p_dt = datetime.combine(day, START_TIME) + timedelta(minutes=(seq - 1) * slot_length)
+
+    # emit the SQL and grab the generated ID
+    pid = write_sql(
+        """
+        INSERT INTO Performance
+          (type_id, datetime, duration, break_duration,
+           stage_id, event_id, sequence_number)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """,
+        (
+            perf_type[ptype],
+            p_dt,
+            dur,
+            break_dur,
+            stage_of_year[p_dt.year],
+            ev_id,
+            seq,
+        ),
+    )
+    return pid
+
+def safe_add_perf(ev_id: int, day: date, total: int) -> int | None:
+    """
+    Try up to 10 random non‐headline/non‐warmup slots.
+    Skip any that fail with either:
+      • “Stage already booked” (errno 1644), or
+      • duplicate sequence_number (errno 1062).
+    Returns the new perf_id, or None if all 10 try‐outs collide.
+    """
+    for _ in range(10):
+        seq = random.randint(2, total - 1)
+        try:
+            return add_perf(ev_id, day, seq, total)
+        except DatabaseError as e:
+            if getattr(e, "errno", None) in (1644, 1062):
+                # collision or dup‐seq ⇒ try another slot
+                continue
+            raise
+    return None
+
+# safe insert into Performance_Artist, using write_sql
+def safe_insert_artist(perf_id: int, artist_id: int, year: int) -> bool:
+    """
+    Try inserting into Performance_Artist via write_sql.
+    If the 3-year-limit trigger (errno 1644) fires, swallow it and return False.
+    """
+    try:
+        write_sql(
+            "INSERT INTO Performance_Artist (perf_id, artist_id) VALUES (%s, %s)",
+            (perf_id, artist_id)
+        )
+        appearances[artist_id].append(year)
+        return True
+    except DatabaseError as e:
+        if getattr(e, "errno", None) == 1644:
+            return False
+        raise
 
 def reset_table(table: str) -> None:
     write_sql(f"DELETE FROM {table}")
@@ -180,18 +247,17 @@ for r in cur.fetchall():
     sub_by_genre.setdefault(r["genre_id"], []).append(r["sub_genre_id"])
 
 print("Starting SQL Generation...")
-# ───────────────────────── 0. EQUIPMENT & STAGE_EQUIPMENT
+# ───────────────────────── 0. EQUIPMENT ─────────────────────────
 print("→ equipment")
 for t in ("Stage_Equipment", "Equipment"):
     reset_table(t)
 
+# generate 30 equipment items instead of 5
 equip_items = [
-    ("PA System",     "Main sound reinforcement"),
-    ("Lighting Rig",  "LED and moving heads"),
-    ("Backline Kit",  "Drums, amps, keyboards"),
-    ("Wireless Mics", "8-channel microphone set"),
-    ("Smoke Machine", "Low-fog special effect"),
+    (f"Equipment {i}", f"Placeholder equipment #{i}")
+    for i in range(1, 31)
 ]
+
 # varied placeholder images for equipment
 placeholder_bases = [
     "https://placehold.co/600x400?text=Audio",
@@ -205,12 +271,15 @@ equip_ids: List[int] = []
 for name, caption in equip_items:
     img = random.choice(placeholder_bases)  # pick a random image for variety
     eid = write_sql(
-        "INSERT INTO Equipment (name,image,caption) VALUES (%s,%s,%s)",
+        """
+        INSERT INTO Equipment (name, image, caption)
+        VALUES (%s, %s, %s)
+        """,
         (name, img, caption)
     )
     equip_ids.append(eid)
 
-# ───────────────────────── 1. STAGES
+# ───────────────────────── 1. STAGES ─────────────────────────
 print("→ stages")
 # first delete any Events that still reference Stage.stage_id
 reset_table("Event")
@@ -234,15 +303,16 @@ for yr in range(EARLIEST, LATEST + 1):
         if idx == 1:
             stage_of_year[yr] = sid
 
-        # assign a random subset (2–all) of equipment to this stage
-        eq_sample = random.sample(equip_ids, random.randint(2, len(equip_ids)))
+        # assign each stage 5–9 equipment items
+        eq_count = random.randint(5, 9)
+        eq_sample = random.sample(equip_ids, eq_count)
         for eq in eq_sample:
             write_sql(
                 "INSERT INTO Stage_Equipment (stage_id,equip_id) VALUES (%s,%s)",
                 (sid, eq)
             )
 
-# ───────────────────────── 2. LOCATIONS & FESTIVALS
+# ───────────────────────── 2. LOCATIONS & FESTIVALS ─────────────────────────
 print("→ locations & festivals")
 for t in ("Festival", "Location"):
     reset_table(t)
@@ -348,7 +418,7 @@ for i, yr in enumerate(remaining):
         )
     )
 
-# ───────────────────────── 3. EVENTS
+# ───────────────────────── 3. EVENTS ─────────────────────────
 print("→ events")
 event_of_day: Dict[tuple[int,date],int] = {}
 
@@ -368,22 +438,25 @@ for yr, days in days_of_year.items():
         )
         event_of_day[(yr, d)] = eid
 
-# ───────────────────────── 4. STAFF & WORKS_ON (create + enforce ratios) ─────────────────────────
+# ───────────────────────── 4. STAFF & WORKS_ON (create + enforce ratios + all roles) ─────────────────────────
 print("→ staff & assignments")
-for t in ("Works_On", "Staff"):
-    reset_table(t)
+reset_table("Works_On")
+reset_table("Staff")
 
 import random, math
 from datetime import date
+from typing import Dict, List
 
 # 1) Create security staff
 sec_ids: List[int] = []
 for n in range(N_SEC):
     sid = write_sql(
-        """INSERT INTO Staff
-             (first_name, last_name, date_of_birth, role_id,
-              experience_id, image, caption)
-           VALUES (%s,%s,%s,%s,%s,%s,%s)""",
+        """
+        INSERT INTO Staff
+          (first_name, last_name, date_of_birth, role_id,
+           experience_id, image, caption)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """,
         (
             f"Sec{n}", "Guard", date(1980,1,1),
             role_id["security"], exp_id["experienced"],
@@ -396,10 +469,12 @@ for n in range(N_SEC):
 sup_ids: List[int] = []
 for n in range(N_SUP):
     sid = write_sql(
-        """INSERT INTO Staff
-             (first_name, last_name, date_of_birth, role_id,
-              experience_id, image, caption)
-           VALUES (%s,%s,%s,%s,%s,%s,%s)""",
+        """
+        INSERT INTO Staff
+          (first_name, last_name, date_of_birth, role_id,
+           experience_id, image, caption)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """,
         (
             f"Sup{n}", "Crew", date(1985,1,1),
             role_id["support"], exp_id["intermediate"],
@@ -408,57 +483,73 @@ for n in range(N_SUP):
     )
     sup_ids.append(sid)
 
-# 3) Create other staff roles (5 per remaining role)
-other_ids: List[int] = []
+# 3) Create one block of 5 staff for each other role
+staff_by_role: Dict[str, List[int]] = {}
 for role_name, rid in role_id.items():
     if role_name not in ("security", "support"):
+        staff_by_role[role_name] = []
         for n in range(5):
             dob = date(
-                random.randint(1970,1995),
-                random.randint(1,12),
-                random.randint(1,28)
+                random.randint(1970, 2000),
+                random.randint(1, 12),
+                random.randint(1, 28)
             )
-            exp_choice = random.choice(list(exp_id.values()))
-            caption = role_name.title()
             sid = write_sql(
-                """INSERT INTO Staff
-                     (first_name, last_name, date_of_birth, role_id,
-                      experience_id, image, caption)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s)""",
+                """
+                INSERT INTO Staff
+                  (first_name, last_name, date_of_birth, role_id,
+                   experience_id, image, caption)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """,
                 (
-                    f"{role_name.replace(' ','')}{n}", "Staff", dob,
-                    rid, exp_choice,
-                    "https://placehold.co/600x400", caption
+                    f"{role_name.title()}{n}", "Staff", dob,
+                    rid, random.choice(list(exp_id.values())),
+                    "https://placehold.co/600x400", role_name.title()
                 )
             )
-            other_ids.append(sid)
+            staff_by_role[role_name].append(sid)
 
-# 4) Assign staff to each event according to capacity‐based ratios
+# 4) Assign staff to each event: enforce ratios AND at least one per role
 for ev in event_of_day.values():
-    # lookup this event’s stage capacity
-    cur.execute("""
+    # fetch capacity via cur.execute (read-only)
+    cur.execute(
+        """
         SELECT s.capacity
           FROM Event e
           JOIN Stage s ON e.stage_id = s.stage_id
          WHERE e.event_id = %s
-    """, (ev,))
+        """,
+        (ev,)
+    )
     cap = cur.fetchone()["capacity"]
 
-    # compute minima
-    min_sec  = math.ceil(cap * 0.05)          # ≥5% security
-    min_sup  = math.ceil(cap * 0.02)          # ≥2% support
-    min_tech = max(1, math.ceil(cap / 100))   # ≥1 tech per 100 seats
+    min_sec  = math.ceil(cap * 0.05)
+    min_sup  = math.ceil(cap * 0.02)
+    min_tech = max(1, math.ceil(cap / 100))
 
-    # sample exactly that many from each pool
-    chosen = []
-    chosen += random.sample(sec_ids,  min(min_sec,  len(sec_ids)))
-    chosen += random.sample(sup_ids,  min(min_sup,  len(sup_ids)))
-    chosen += random.sample(other_ids, min(min_tech, len(other_ids)))
+    chosen: List[int] = []
 
-    # emit the works_on inserts
+    # satisfy security & support ratios
+    chosen += random.sample(sec_ids, min(min_sec, len(sec_ids)))
+    chosen += random.sample(sup_ids, min(min_sup, len(sup_ids)))
+
+    # ensure at least one staff member of every other role
+    for sids in staff_by_role.values():
+        chosen.append(random.choice(sids))
+
+    # if still below the tech minimum, add extras from the other roles
+    extra = max(0, min_tech - len(staff_by_role))
+    if extra > 0:
+        pool = [sid for lst in staff_by_role.values() for sid in lst if sid not in chosen]
+        chosen += random.sample(pool, min(extra, len(pool)))
+
+    # dedupe
+    chosen = list(set(chosen))
+
+    # insert the Works_On records via write_sql
     for sid in chosen:
         write_sql(
-            "INSERT INTO Works_On (staff_id, event_id) VALUES (%s,%s)",
+            "INSERT INTO Works_On (staff_id, event_id) VALUES (%s, %s)",
             (sid, ev)
         )
 
@@ -547,45 +638,109 @@ for b in range(N_BAND):
             (bid, random.choice(sub_by_genre[gid]))
         )
 
-# ──────────────────── 6. PERFORMANCES (robust booking + init-cap 15) ────────────────────
+# ───────────────────────── 6. PERFORMANCES (robust booking + init-cap 15) ─────────────────────────
 print("→ performances")
 reset_table("Performance")
+
+# record actual slot counts for each event
+slot_counts: Dict[int, int] = {}
 
 # maximum initial performances per artist
 MAX_INIT_PERF = 13
 
-# track each artist’s festival-year history and perf-ids per event
+# track each artist’s festival-year history
 appearances: Dict[int, List[int]] = {aid: [] for aid in artist_ids}
 perf_ids_of_event: Dict[int, List[int]] = {}
 
-# 6.1 – regular booking (80% band / 20% solo), cap each artist at 13 slots
 for (yr, day), ev in event_of_day.items():
-    n = random.randint(MIN_PERF, MAX_PERF)
-    perf_ids_of_event[ev] = []
-    for seq in range(1, n + 1):
-        # insert the performance slot
-        pid = add_perf(ev, day, seq, n)             # uses write_sql under the hood :contentReference[oaicite:0]{index=0}:contentReference[oaicite:1]{index=1}
-        perf_ids_of_event[ev].append(pid)
+    # fetch the event window
+    cur.execute(
+        "SELECT start_dt, end_dt FROM Event WHERE event_id=%s",
+        (ev,),
+    )
+    evt = cur.fetchone()
+    event_start, event_end = evt["start_dt"], evt["end_dt"]
 
-        # slot 1 reserved for warm-ups
-        if seq == 1:
+    # decide how many slots; record it for later
+    n = random.randint(MIN_PERF, MAX_PERF)
+    slot_counts[ev] = n
+    perf_ids_of_event[ev] = []
+
+    # ─── Slot 1 (warm-up) at event_start ───
+    dur       = WARM_MIN
+    break_dur = random.randint(BREAK_MIN, BREAK_MAX)
+    pid = write_sql(
+        """
+        INSERT INTO Performance
+          (type_id, datetime, duration, break_duration,
+           stage_id, event_id, sequence_number)
+        VALUES (%s,%s,%s,%s,%s,%s,%s)
+        """,
+        (
+            perf_type["warm up"],
+            event_start,
+            dur,
+            break_dur,
+            stage_of_year[event_start.year],
+            ev,
+            1,
+        )
+    )
+    perf_ids_of_event[ev].append(pid)
+    next_start = event_start + timedelta(minutes=dur + break_dur)
+
+    # ─── Slots 2 … n-1: sequential, retry up to 10× on conflict/window errors ───
+    for seq in range(2, n):
+        dur       = SET_MIN
+        break_dur = random.randint(BREAK_MIN, BREAK_MAX)
+
+        pid = None
+        for _ in range(10):
+            try:
+                pid = write_sql(
+                    """
+                    INSERT INTO Performance
+                      (type_id, datetime, duration, break_duration,
+                       stage_id, event_id, sequence_number)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s)
+                    """,
+                    (
+                        perf_type["other"],
+                        next_start,
+                        dur,
+                        break_dur,
+                        stage_of_year[next_start.year],
+                        ev,
+                        seq,
+                    )
+                )
+                break
+            except DatabaseError as e:
+                # retry on “stage already booked” or “outside window” (both errno 1644)
+                if getattr(e, "errno", None) == 1644:
+                    continue
+                raise
+
+        if pid is None:
+            print(f"→ warning: skipped slot {seq} for event {ev} on {day}")
+            next_start += timedelta(minutes=dur + break_dur)
             continue
 
-        # 80% chance to try a band
+        perf_ids_of_event[ev].append(pid)
+
+        # ─── assignment: 80% band, 20% solo ───
         if random.random() < 0.80:
             for _ in range(30):
                 bid = random.choice(band_ids)
-                # fetch members of that band
-                cur.execute("SELECT artist_id FROM Band_Member WHERE band_id=%s", (bid,))
+                cur.execute(
+                    "SELECT artist_id FROM Band_Member WHERE band_id=%s",
+                    (bid,),
+                )
                 members = [r["artist_id"] for r in cur.fetchall()]
-
-                # enforce per-artist cap
                 if any(len(appearances[m]) >= MAX_INIT_PERF for m in members):
                     continue
-                # enforce 3-year sequence limit
                 if not all(ok_seq(appearances[m], yr) for m in members):
                     continue
-
                 try:
                     write_sql(
                         "INSERT INTO Performance_Band (perf_id,band_id) VALUES (%s,%s)",
@@ -595,12 +750,79 @@ for (yr, day), ev in event_of_day.items():
                         appearances[m].append(yr)
                     break
                 except DatabaseError as e:
-                    if e.errno == 1644:  # overlap/staffing trigger
+                    if getattr(e, "errno", None) == 1644:
                         continue
                     raise
-            continue
+        else:
+            for _ in range(100):
+                aid = random.choice(artist_ids)
+                if len(appearances[aid]) >= MAX_INIT_PERF:
+                    continue
+                if not ok_seq(appearances[aid], yr):
+                    continue
+                try:
+                    write_sql(
+                        "INSERT INTO Performance_Artist (perf_id,artist_id) VALUES (%s,%s)",
+                        (pid, aid)
+                    )
+                    appearances[aid].append(yr)
+                    break
+                except DatabaseError as e:
+                    if getattr(e, "errno", None) in (1062, 1644):
+                        continue
+                    raise
 
-        # 20% solo fallback
+        next_start += timedelta(minutes=dur + break_dur)
+
+    # ─── Slot n (headline) finishing exactly at event_end ───
+    dur            = SET_MIN
+    break_dur      = random.randint(BREAK_MIN, BREAK_MAX)
+    headline_start = event_end - timedelta(minutes=dur)
+    pid = write_sql(
+        """
+        INSERT INTO Performance
+          (type_id, datetime, duration, break_duration,
+           stage_id, event_id, sequence_number)
+        VALUES (%s,%s,%s,%s,%s,%s,%s)
+        """,
+        (
+            perf_type["headline"],
+            headline_start,
+            dur,
+            break_dur,
+            stage_of_year[headline_start.year],
+            ev,
+            n,
+        )
+    )
+    perf_ids_of_event[ev].append(pid)
+
+    # assign headline slot
+    if random.random() < 0.80:
+        for _ in range(30):
+            bid = random.choice(band_ids)
+            cur.execute(
+                "SELECT artist_id FROM Band_Member WHERE band_id=%s",
+                (bid,),
+            )
+            members = [r["artist_id"] for r in cur.fetchall()]
+            if any(len(appearances[m]) >= MAX_INIT_PERF for m in members):
+                continue
+            if not all(ok_seq(appearances[m], yr) for m in members):
+                continue
+            try:
+                write_sql(
+                    "INSERT INTO Performance_Band (perf_id,band_id) VALUES (%s,%s)",
+                    (pid, bid)
+                )
+                for m in members:
+                    appearances[m].append(yr)
+                break
+            except DatabaseError as e:
+                if getattr(e, "errno", None) == 1644:
+                    continue
+                raise
+    else:
         for _ in range(100):
             aid = random.choice(artist_ids)
             if len(appearances[aid]) >= MAX_INIT_PERF:
@@ -615,13 +837,13 @@ for (yr, day), ev in event_of_day.items():
                 appearances[aid].append(yr)
                 break
             except DatabaseError as e:
-                if e.errno in (1062, 1644):  # dup or 3-year trigger
+                if getattr(e, "errno", None) in (1062, 1644):
                     continue
                 raise
 
-# 6.2 – expanded Q3 warm-up seeding: 4 days × up to 8 artists/year, cap at 13
+# ───────────────────────── 6.2 Q3 warm-up seeding (4 days × up to 8 artists/year, cap at 13) ─────────────────────────
 for yr in sorted(days_of_year.keys()):
-    days = days_of_year[yr][:4]                          # first 4 days
+    days = days_of_year[yr][:4]
     sample_artists = random.sample(artist_ids, min(8, len(artist_ids)))
     for artist in sample_artists:
         if len(appearances[artist]) >= MAX_INIT_PERF:
@@ -629,7 +851,7 @@ for yr in sorted(days_of_year.keys()):
 
         for day in days:
             ev = event_of_day[(yr, day)]
-            # find or create the slot-1 warm-up performance
+            # find or create slot-1
             cur.execute(
                 "SELECT perf_id FROM Performance WHERE event_id=%s AND sequence_number=1",
                 (ev,),
@@ -638,18 +860,37 @@ for yr in sorted(days_of_year.keys()):
             if row:
                 pid = row["perf_id"]
             else:
-                pid = add_perf(ev, day, 1, MAX_PERF)
+                dur       = WARM_MIN
+                break_dur = random.randint(BREAK_MIN, BREAK_MAX)
+                pid = write_sql(
+                    """
+                    INSERT INTO Performance
+                      (type_id, datetime, duration, break_duration,
+                       stage_id, event_id, sequence_number)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s)
+                    """,
+                    (
+                        perf_type["warm up"],
+                        event_start,  # from this event’s start_dt
+                        dur,
+                        break_dur,
+                        stage_of_year[event_start.year],
+                        ev,
+                        1,
+                    )
+                )
 
-            # insert the warm-up artist if under cap
+            # assign warm-up artist if under cap
             if len(appearances[artist]) < MAX_INIT_PERF:
                 try:
                     write_sql(
                         "INSERT INTO Performance_Artist (perf_id,artist_id) VALUES (%s,%s)",
-                        (pid, artist),
+                        (pid, artist)
                     )
                     appearances[artist].append(yr)
                 except DatabaseError as e:
-                    if e.errno not in (1062, 1644):
+                    # ignore duplicate or 3-year-spacing trigger
+                    if getattr(e, "errno", None) not in (1062, 1644):
                         raise
 
 # ───────────────────────── 7. ATTENDEES • TICKETS • REVIEWS
@@ -755,37 +996,22 @@ for ev, perfs in perf_ids_of_event.items():
 # ───────────────────────── 8. GUARANTEE GRADED QUERY COVERAGE ─────────────────────────
 print("→ guarantee graded query coverage")
 
-# 8.1 Q14: Rock, Pop, Jazz each have ≥3 performances in 2024 & 2025
+# ───────────────────────── 8.1 Q14: Rock, Pop, Jazz each have ≥3 performances in 2024 & 2025
 pair_years    = (2024, 2025)
 target_genres = ["Rock", "Pop", "Jazz"]
 MIN_PAIR_CNT  = 3
 
-def perf_cnt(year, gid):
+def perf_cnt(year: int, gid: int) -> int:
     cur.execute("""
         SELECT COUNT(*) AS c
           FROM Performance p
-          JOIN Event            e  ON e.event_id     = p.event_id
-          JOIN Performance_Artist pa ON pa.perf_id   = p.perf_id
-          JOIN Artist_Genre      ag ON ag.artist_id = pa.artist_id
-         WHERE e.fest_year = %s AND ag.genre_id = %s
+          JOIN Event e             ON e.event_id     = p.event_id
+          JOIN Performance_Artist pa ON pa.perf_id    = p.perf_id
+          JOIN Artist_Genre ag     ON ag.artist_id   = pa.artist_id
+         WHERE e.fest_year = %s
+           AND ag.genre_id = %s
     """, (year, gid))
     return cur.fetchone()["c"]
-
-def safe_add_perf(ev_id: int, day: date, total: int) -> int | None:
-    """
-    Try up to 10 random slots for this event/day.
-    Skip any that trigger “Stage already booked” (errno 1644).
-    Returns the new perf_id, or None if none succeeded.
-    """
-    for _ in range(10):
-        seq = random.randint(2, total - 1)
-        try:
-            return add_perf(ev_id, day, seq, total)
-        except DatabaseError as e:
-            if getattr(e, "errno", None) == 1644:
-                continue
-            raise
-    return None
 
 for gname in target_genres:
     gid  = genre_id[gname]
@@ -798,30 +1024,23 @@ for gname in target_genres:
         if need <= 0:
             continue
 
+        # pick one artist in this genre
         cur.execute(
             "SELECT artist_id FROM Artist_Genre WHERE genre_id = %s LIMIT 1",
             (gid,)
         )
-        aid  = cur.fetchone()["artist_id"]
-        day0 = days_of_year[yr][0]
-        ev0  = event_of_day[(yr, day0)]
+        aid      = cur.fetchone()["artist_id"]
+        day0     = days_of_year[yr][0]
+        event_id = event_of_day[(yr, day0)]
 
         added = tries = 0
         while added < need and tries < need * 5:
             tries += 1
-            # use safe_add_perf (catches “stage already booked” trigger)
-            pid = safe_add_perf(ev0, day0, MAX_PERF)
+            pid = safe_add_perf(event_id, day0, MAX_PERF)
             if pid is None:
                 break
-            try:
-                write_sql(
-                    "INSERT INTO Performance_Artist (perf_id, artist_id) VALUES (%s, %s)",
-                    (pid, aid)
-                )
-                appearances[aid].append(yr)
+            if safe_insert_artist(pid, aid, yr):
                 added += 1
-            except DatabaseError:
-                continue
 
 # 8.2 Q6: ensure attendee 1 (special_a) has a USED ticket for every 2024–25 event
 for (yr, _), ev in event_of_day.items():
@@ -1057,7 +1276,6 @@ for att in q9_attendees:
             )
             
 # ───────────────────────── 8.8 Guarantee Q3: at least 3 warm-ups per year ─────────────────────────
-print("→ guarantee Q3 warm-up coverage")
 
 for yr in range(EARLIEST, LATEST + 1):
     # collect existing warm-up counts per year
@@ -1097,9 +1315,9 @@ for yr in range(EARLIEST, LATEST + 1):
         try:
             write_sql(
                 "INSERT INTO Performance_Artist (perf_id, artist_id) VALUES (%s, %s)",
-                (pid, warm_artist)
+                (pid, artist)
             )
-            appearances[warm_artist].append(yr)
+            appearances[artist].append(yr)
             added += 1
         except DatabaseError as e:
             # if duplicate PK or 3-year trigger, skip

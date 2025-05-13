@@ -1,13 +1,15 @@
 artist_id  artist_name        performance_count
 ---------  -----------------  -----------------
-42         Artist41 Lastname  8
-25         Artist24 Lastname  6
-37         Artist36 Lastname  6
-20         Artist19 Lastname  4
-27         Artist26 Lastname  4
-43         Artist42 Lastname  4
-14         Artist13 Lastname  3
-3          Artist2 Lastname   2
-23         Artist22 Lastname  2
-39         Artist38 Lastname  2
+12         Artist11 Lastname  8
+36         Artist35 Lastname  7
+1          Artist0 Lastname   6
+27         Artist26 Lastname  6
+31         Artist30 Lastname  5
+14         Artist13 Lastname  4
+30         Artist29 Lastname  4
+38         Artist37 Lastname  4
+2          Artist1 Lastname   3
+17         Artist16 Lastname  3
+18         Artist17 Lastname  3
+22         Artist21 Lastname  1
 28         Artist27 Lastname  1

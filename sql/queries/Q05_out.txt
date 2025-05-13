@@ -1,22 +1,18 @@
 artist_id  artist_name        age  performance_count
 ---------  -----------------  ---  -----------------
-2          Artist1 Lastname   27   13
-4          Artist3 Lastname   24   13
-5          Artist4 Lastname   25   13
-6          Artist5 Lastname   28   13
-8          Artist7 Lastname   23   13
-9          Artist8 Lastname   19   13
-10         Artist9 Lastname   21   13
-11         Artist10 Lastname  24   13
-12         Artist11 Lastname  24   13
-13         Artist12 Lastname  19   13
-15         Artist14 Lastname  22   13
-16         Artist15 Lastname  19   13
-17         Artist16 Lastname  26   13
-18         Artist17 Lastname  24   13
-19         Artist18 Lastname  22   13
-21         Artist20 Lastname  24   13
-22         Artist21 Lastname  23   13
+3          Artist2 Lastname   28   13
+5          Artist4 Lastname   18   13
+6          Artist5 Lastname   27   13
+7          Artist6 Lastname   25   13
+8          Artist7 Lastname   22   13
+9          Artist8 Lastname   27   13
+10         Artist9 Lastname   24   13
+11         Artist10 Lastname  28   13
+13         Artist12 Lastname  21   13
+15         Artist14 Lastname  20   13
+16         Artist15 Lastname  22   13
+19         Artist18 Lastname  27   13
+21         Artist20 Lastname  23   13
+23         Artist22 Lastname  21   13
 24         Artist23 Lastname  29   13
-26         Artist25 Lastname  18   13
-29         Artist28 Lastname  26   13
+29         Artist28 Lastname  20   13

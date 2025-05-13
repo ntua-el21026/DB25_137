@@ -1,8 +1,5 @@
 genre_id  genre_name  year1  year2  perf_count
 --------  ----------  -----  -----  ----------
-6         Classical   2021   2022   6
-5         Electronic  2026   2027   4
-3         Jazz        2026   2027   9
-8         Latin       2024   2025   4
-8         Latin       2026   2027   7
-7         Reggae      2026   2027   6
+5         Electronic  2017   2018   10
+4         Hip Hop     2026   2027   7
+2         Pop         2016   2017   11

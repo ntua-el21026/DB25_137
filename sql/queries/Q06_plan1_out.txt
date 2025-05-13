@@ -1,33 +1,31 @@
 
 ## PLAN 1 — RESULT ##
-event_id  event_title  avg_event_rating
---------  -----------  ----------------
-23        2021 Day 2   3.5000
+(no rows)
 
 ## PLAN 1 — EXPLAIN ##
 id  select_type  table       partitions  type    possible_keys                                                                                       key           key_len  ref                               rows  filtered  Extra          
 --  -----------  ----------  ----------  ------  --------------------------------------------------------------------------------------------------  ------------  -------  --------------------------------  ----  --------  ---------------
-1   PRIMARY      <derived2>  NULL        ALL     NULL                                                                                                NULL          NULL     NULL                              83    100.0     NULL
+1   PRIMARY      <derived2>  NULL        ALL     NULL                                                                                                NULL          NULL     NULL                              58    100.0     NULL
 2   DERIVED      att         NULL        const   PRIMARY                                                                                             PRIMARY       4        const                             1     100.0     Using temporary
 2   DERIVED      t           NULL        ref     attendee_id,idx_ticket_event_date_payment,idx_ticket_attendee_event,idx_ticket_attendee_year_event  attendee_id   4        const                             1     100.0     Using index
 2   DERIVED      e           NULL        eq_ref  PRIMARY,uq_event_stage                                                                              PRIMARY       4        pulse_university.t.event_id       1     100.0     NULL
-2   DERIVED      p           NULL        ref     uq_event_seq,fk_perf_event_stage,idx_perf_event_type                                                uq_event_seq  4        pulse_university.t.event_id       83    100.0     Using index
+2   DERIVED      p           NULL        ref     uq_event_seq,fk_perf_event_stage,idx_perf_event_type                                                uq_event_seq  4        pulse_university.t.event_id       58    100.0     Using index
 2   DERIVED      r           NULL        eq_ref  perf_id,idx_review_perf_io,idx_review_attendee_overall,idx_review_perf_attendee_overall             perf_id       8        pulse_university.p.perf_id,const  1     100.0     NULL
 
 ## PLAN 1 — EXPLAIN ANALYZE ##
 EXPLAIN
 -------
--> Table scan on View_Attendee_Event_Rating  (cost=2.5..2.5 rows=0) (actual time=0.0853..0.0855 rows=1 loops=1)
-    -> Materialize  (cost=0..0 rows=0) (actual time=0.0846..0.0846 rows=1 loops=1)
-        -> Table scan on <temporary>  (actual time=0.0701..0.0704 rows=1 loops=1)
-            -> Aggregate using temporary table  (actual time=0.0689..0.0689 rows=1 loops=1)
-                -> Nested loop left join  (cost=38.3 rows=83) (actual time=0.028..0.0523 rows=5 loops=1)
-                    -> Nested loop inner join  (cost=9.27 rows=83) (actual time=0.019..0.0232 rows=5 loops=1)
-                        -> Nested loop inner join  (cost=0.7 rows=1) (actual time=0.0137..0.0148 rows=1 loops=1)
-                            -> Covering index lookup on t using attendee_id (attendee_id=69)  (cost=0.35 rows=1) (actual time=0.00863..0.00942 rows=1 loops=1)
-                            -> Single-row index lookup on e using PRIMARY (event_id=t.event_id)  (cost=0.35 rows=1) (actual time=0.00407..0.00407 rows=1 loops=1)
-                        -> Covering index lookup on p using uq_event_seq (event_id=t.event_id)  (cost=8.57 rows=83) (actual time=0.00516..0.00754 rows=5 loops=1)
-                    -> Single-row index lookup on r using perf_id (perf_id=p.perf_id, attendee_id=69)  (cost=0.251 rows=1) (actual time=0.00541..0.00543 rows=0.8 loops=5)
+-> Table scan on View_Attendee_Event_Rating  (cost=2.5..2.5 rows=0) (actual time=0.0317..0.0317 rows=0 loops=1)
+    -> Materialize  (cost=0..0 rows=0) (actual time=0.0312..0.0312 rows=0 loops=1)
+        -> Table scan on <temporary>  (actual time=0.0171..0.0171 rows=0 loops=1)
+            -> Aggregate using temporary table  (actual time=0.0159..0.0159 rows=0 loops=1)
+                -> Nested loop left join  (cost=27.1 rows=58) (actual time=0.00937..0.00937 rows=0 loops=1)
+                    -> Nested loop inner join  (cost=6.77 rows=58) (actual time=0.00876..0.00876 rows=0 loops=1)
+                        -> Nested loop inner join  (cost=0.7 rows=1) (actual time=0.00876..0.00876 rows=0 loops=1)
+                            -> Covering index lookup on t using attendee_id (attendee_id=69)  (cost=0.35 rows=1) (actual time=0.00815..0.00815 rows=0 loops=1)
+                            -> Single-row index lookup on e using PRIMARY (event_id=t.event_id)  (cost=0.35 rows=1) (never executed)
+                        -> Covering index lookup on p using uq_event_seq (event_id=t.event_id)  (cost=6.07 rows=58) (never executed)
+                    -> Single-row index lookup on r using perf_id (perf_id=p.perf_id, attendee_id=69)  (cost=0.252 rows=1) (never executed)
 
 
 ## PLAN 1 — OPTIMIZER_TRACE ##
@@ -331,8 +329,8 @@ TRACE
                       "table": "`Ticket` `t`",
                       "range_analysis": {
                         "table_scan": {
-                          "rows": 6105,
-                          "cost": 619.1
+                          "rows": 5461,
+                          "cost": 554.2
                         },
                         "potential_range_indexes": [
                           {
@@ -395,7 +393,7 @@ TRACE
                         ],
                         "best_covering_index_scan": {
                           "index": "attendee_id",
-                          "cost": 612.984,
+                          "cost": 548.349,
                           "chosen": true
                         },
                         "setup_range_conditions": [
@@ -478,7 +476,7 @@ TRACE
                     {
                       "table": "`Event` `e`",
                       "table_scan": {
-                        "rows": 61,
+                        "rows": 58,
                         "cost": 0.25
                       }
                     },
@@ -500,8 +498,8 @@ TRACE
                       "table": "`Review` `r`",
                       "range_analysis": {
                         "table_scan": {
-                          "rows": 9926,
-                          "cost": 1001.7
+                          "rows": 9796,
+                          "cost": 988.45
                         },
                         "potential_range_indexes": [
                           {
@@ -536,7 +534,7 @@ TRACE
                         ],
                         "best_covering_index_scan": {
                           "index": "idx_review_perf_attendee_overall",
-                          "cost": 996.782,
+                          "cost": 983.731,
                           "chosen": true
                         },
                         "setup_range_conditions": [
@@ -561,8 +559,8 @@ TRACE
                               "using_mrr": false,
                               "index_only": false,
                               "in_memory": 1,
-                              "rows": 4,
-                              "cost": 1.66,
+                              "rows": 1,
+                              "cost": 0.61,
                               "chosen": true
                             }
                           ],
@@ -575,13 +573,13 @@ TRACE
                           "range_access_plan": {
                             "type": "range_scan",
                             "index": "idx_review_attendee_overall",
-                            "rows": 4,
+                            "rows": 1,
                             "ranges": [
                               "attendee_id = 69"
                             ]
                           },
-                          "rows_for_plan": 4,
-                          "cost_for_plan": 1.66,
+                          "rows_for_plan": 1,
+                          "cost_for_plan": 0.61,
                           "chosen": true
                         }
                       }
@@ -656,8 +654,8 @@ TRACE
                               },
                               {
                                 "access_type": "scan",
-                                "cost": 6.35,
-                                "rows": 61,
+                                "cost": 6.05,
+                                "rows": 58,
                                 "chosen": false,
                                 "cause": "cost"
                               }
@@ -680,22 +678,22 @@ TRACE
                                   {
                                     "access_type": "ref",
                                     "index": "uq_event_seq",
-                                    "rows": 83,
-                                    "cost": 8.5725,
+                                    "rows": 58,
+                                    "cost": 6.06564,
                                     "chosen": true
                                   },
                                   {
                                     "access_type": "ref",
                                     "index": "fk_perf_event_stage",
-                                    "rows": 83,
-                                    "cost": 8.58001,
+                                    "rows": 58,
+                                    "cost": 6.07086,
                                     "chosen": false
                                   },
                                   {
                                     "access_type": "ref",
                                     "index": "idx_perf_event_type",
-                                    "rows": 83,
-                                    "cost": 8.58001,
+                                    "rows": 58,
+                                    "cost": 6.07086,
                                     "chosen": false
                                   },
                                   {
@@ -719,22 +717,22 @@ TRACE
                                   {
                                     "access_type": "ref",
                                     "index": "uq_event_seq",
-                                    "rows": 83,
-                                    "cost": 8.5725,
+                                    "rows": 58,
+                                    "cost": 6.06564,
                                     "chosen": true
                                   },
                                   {
                                     "access_type": "ref",
                                     "index": "fk_perf_event_stage",
-                                    "rows": 83,
-                                    "cost": 8.58001,
+                                    "rows": 58,
+                                    "cost": 6.07086,
                                     "chosen": false
                                   },
                                   {
                                     "access_type": "ref",
                                     "index": "idx_perf_event_type",
-                                    "rows": 83,
-                                    "cost": 8.58001,
+                                    "rows": 58,
+                                    "cost": 6.07086,
                                     "chosen": false
                                   },
                                   {
@@ -745,8 +743,8 @@ TRACE
                                 ]
                               },
                               "condition_filtering_pct": 100,
-                              "rows_for_plan": 83,
-                              "cost_for_plan": 9.2725,
+                              "rows_for_plan": 58,
+                              "cost_for_plan": 6.76564,
                               "rest_of_plan": [
                                 {
                                   "plan_prefix": [
@@ -762,7 +760,7 @@ TRACE
                                         "access_type": "eq_ref",
                                         "index": "perf_id",
                                         "rows": 1,
-                                        "cost": 29.05,
+                                        "cost": 20.3,
                                         "chosen": true
                                       },
                                       {
@@ -784,20 +782,20 @@ TRACE
                                         "cause": "heuristic_eqref_already_found"
                                       },
                                       {
-                                        "rows_to_scan": 4,
+                                        "rows_to_scan": 1,
                                         "access_type": "range",
                                         "range_details": {
                                           "used_index": "idx_review_attendee_overall"
                                         },
-                                        "resulting_rows": 4,
-                                        "cost": 170.98,
+                                        "resulting_rows": 1,
+                                        "cost": 41.18,
                                         "chosen": false
                                       }
                                     ]
                                   },
                                   "condition_filtering_pct": 100,
-                                  "rows_for_plan": 83,
-                                  "cost_for_plan": 38.3225,
+                                  "rows_for_plan": 58,
+                                  "cost_for_plan": 27.0656,
                                   "chosen": true
                                 }
                               ]
@@ -967,8 +965,8 @@ TRACE
               {
                 "table": "`View_Attendee_Event_Rating`",
                 "table_scan": {
-                  "rows": 83,
-                  "cost": 3.5375
+                  "rows": 58,
+                  "cost": 3.225
                 }
               }
             ]
@@ -982,17 +980,17 @@ TRACE
                 "best_access_path": {
                   "considered_access_paths": [
                     {
-                      "rows_to_scan": 83,
+                      "rows_to_scan": 58,
                       "access_type": "scan",
-                      "resulting_rows": 83,
-                      "cost": 11.8375,
+                      "resulting_rows": 58,
+                      "cost": 9.025,
                       "chosen": true
                     }
                   ]
                 },
                 "condition_filtering_pct": 100,
-                "rows_for_plan": 83,
-                "cost_for_plan": 11.8375,
+                "rows_for_plan": 58,
+                "cost_for_plan": 9.025,
                 "chosen": true
               }
             ]
