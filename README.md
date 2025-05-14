@@ -75,7 +75,7 @@ As per the course specifications, we designed and implemented a **relational dat
     - **Run CLI**: Execute authorized CLI commands with live-streamed output and permission checks
 
 - **Automated Testing**:
-  - `test_cli.sh`: Tests user commands and access control logic
+  - `test/test_cli.sh`: Tests user commands and access control logic
 
 - **Setup Instructions**:
   - Detailed installation steps are available in `cli/README.md` and `frontend/README.md`
