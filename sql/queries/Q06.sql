@@ -100,10 +100,10 @@ GROUP BY e.event_id, e.title;
 
 EXPLAIN ANALYZE
 SELECT /*+ BNL(r) NO_BKA(r) */
-       e.event_id,
-       e.title        AS event_title,
-       AVG(r.overall) AS avg_event_rating
-FROM   Review r USE INDEX ()
+    e.event_id,
+    e.title        AS event_title,
+    AVG(r.overall) AS avg_event_rating
+FROM Review r USE INDEX ()
 STRAIGHT_JOIN Performance p   USE INDEX () ON p.perf_id       = r.perf_id
 STRAIGHT_JOIN Ticket      t   USE INDEX () ON t.event_id      = p.event_id
                                           AND t.attendee_id   = r.attendee_id

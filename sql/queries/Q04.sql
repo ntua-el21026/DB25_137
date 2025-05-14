@@ -67,7 +67,7 @@ SELECT /*+ BNL(r) NO_BKA(r) */
     CONCAT(a.first_name,' ',a.last_name) AS artist_name,
     AVG(r.interpretation) AS avg_interpretation,
     AVG(r.overall) AS avg_overall
-FROM Review r  USE INDEX ()
+FROM Review r USE INDEX ()
 STRAIGHT_JOIN Performance_Artist pa USE INDEX () ON pa.perf_id  = r.perf_id
 STRAIGHT_JOIN Artist             a  USE INDEX () ON a.artist_id = pa.artist_id
 WHERE a.artist_id = 7
@@ -79,7 +79,7 @@ SELECT /*+ BNL(r) NO_BKA(r) */
     CONCAT(a.first_name,' ',a.last_name) AS artist_name,
     AVG(r.interpretation) AS avg_interpretation,
     AVG(r.overall) AS avg_overall
-FROM Review r  USE INDEX ()
+FROM Review r USE INDEX ()
 STRAIGHT_JOIN Performance_Artist pa USE INDEX () ON pa.perf_id  = r.perf_id
 STRAIGHT_JOIN Artist             a  USE INDEX () ON a.artist_id = pa.artist_id
 WHERE a.artist_id = 7
@@ -92,7 +92,7 @@ SELECT /*+ BNL(r) NO_BKA(r) */
     CONCAT(a.first_name,' ',a.last_name) AS artist_name,
     AVG(r.interpretation) AS avg_interpretation,
     AVG(r.overall) AS avg_overall
-FROM Review r  USE INDEX ()
+FROM Review r USE INDEX ()
 STRAIGHT_JOIN Performance_Artist pa USE INDEX () ON pa.perf_id  = r.perf_id
 STRAIGHT_JOIN Artist             a  USE INDEX () ON a.artist_id = pa.artist_id
 WHERE a.artist_id = 7
@@ -110,7 +110,7 @@ SELECT /*+ NO_BNL(r) BKA(r) */
     CONCAT(a.first_name,' ',a.last_name) AS artist_name,
     AVG(r.interpretation) AS avg_interpretation,
     AVG(r.overall) AS avg_overall
-FROM Review r  USE INDEX ()
+FROM Review r USE INDEX ()
 STRAIGHT_JOIN Performance_Artist pa USE INDEX () ON pa.perf_id  = r.perf_id
 STRAIGHT_JOIN Artist             a  USE INDEX () ON a.artist_id = pa.artist_id
 WHERE a.artist_id = 7
