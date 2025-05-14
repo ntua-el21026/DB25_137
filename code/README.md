@@ -18,7 +18,7 @@ This folder contains utility scripts used to generate and maintain the SQL files
        - Subgenre–genre consistency
        - 3-year consecutive performance caps
      - Data tailored to support **graded query coverage**, including:
-       - Special cases for Q2, Q4, Q6, Q11, and Q14
+       - Special cases for Q01, Q03, Q05, Q09, Q11, and Q14
 
      > The script auto-runs `create-db`, inserts all data using safe transactional logic, and logs row counts to `docs/organization/db_data.txt`.
 

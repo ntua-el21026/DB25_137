@@ -10,7 +10,7 @@ Output: test_cli_results.txt
 
 ▶ Drop pulse_university DB...
 Command: python3 ./../cli/db137.py drop-db --database pulse_university --yes
-[OK] Schema `pulse_university` dropped
+[OK] Schema `pulse_university` dropped.
 [PASS] Drop pulse_university DB
 
 ▶ Create pulse_university DB...
@@ -20,31 +20,31 @@ Command: python3 ./../cli/db137.py create-db
 [OK] procedures.sql
 [OK] triggers.sql
 [OK] views.sql
-[OK] Database schema deployed
+[OK] Database schema deployed.
 [PASS] Create pulse_university DB
 
 ▶ Drop user testuser1 (if exists)...
 Command: python3 ./../cli/db137.py users drop testuser1
 [WARN] User `testuser1` not found on '%' or 'localhost'.
-Dropped user testuser1.
+[OK] Dropped user testuser1.
 [PASS] Drop user testuser1 (if exists)
 
 ▶ Drop user testuser2 (if exists)...
 Command: python3 ./../cli/db137.py users drop testuser2
 [WARN] User `testuser2` not found on '%' or 'localhost'.
-Dropped user testuser2.
+[OK] Dropped user testuser2.
 [PASS] Drop user testuser2 (if exists)
 
 ▶ Drop user testuser3 (if exists)...
 Command: python3 ./../cli/db137.py users drop testuser3
 [WARN] User `testuser3` not found on '%' or 'localhost'.
-Dropped user testuser3.
+[OK] Dropped user testuser3.
 [PASS] Drop user testuser3 (if exists)
 
 ▶ Register testuser1 with basic privileges...
 Command: python3 ./../cli/db137.py users register testuser1 --password Test1234! --default-db pulse_university --privileges SELECT,INSERT,UPDATE,DELETE
 [OK] Registered `testuser1` with privileges on `pulse_university` for % and localhost
-User 'testuser1' registered. Use `db137 users list` to verify grants.
+[OK] User 'testuser1' registered. Use `db137 users list` to verify grants.
 [PASS] Register testuser1 with basic privileges
 
 ▶ Current grants for testuser1:
@@ -52,7 +52,7 @@ User 'testuser1' registered. Use `db137 users list` to verify grants.
 ▶ Register testuser2 with default privileges...
 Command: python3 ./../cli/db137.py users register testuser2 --password Test1234! --default-db pulse_university
 [OK] Registered `testuser2` with privileges on `pulse_university` for % and localhost
-User 'testuser2' registered. Use `db137 users list` to verify grants.
+[OK] User 'testuser2' registered. Use `db137 users list` to verify grants.
 [PASS] Register testuser2 with default privileges
 
 ▶ Current grants for testuser2:
@@ -95,8 +95,9 @@ Before:
   - INSERT
   - SELECT
   - UPDATE
-[OK] Re-granted: DELETE,SELECT,UPDATE
-Revoked INSERT on pulse_university from testuser1.
+[OK] %: re-granted: DELETE,SELECT,UPDATE
+[OK] localhost: re-granted: DELETE,SELECT,UPDATE
+[OK] Revoked INSERT on pulse_university from testuser1.
 After:
   testuser1@% →
   - DELETE
@@ -108,7 +109,7 @@ After:
 
 ▶ Change password for testuser1...
 Command: python3 ./../cli/db137.py users passwd testuser1 --new-pass NewTest5678!
-Password updated.
+[OK] Password updated.
 [PASS] Change password for testuser1
 
 ▶ Verify login as testuser1 after password change...
@@ -118,7 +119,7 @@ Connected as: testuser1@%
 
 ▶ Rename testuser1 to testuser3...
 Command: python3 ./../cli/db137.py users rename testuser1 testuser3
-testuser1 renamed to testuser3.
+[OK] testuser1 renamed to testuser3.
 [PASS] Rename testuser1 to testuser3
 
 ▶ Current grants for testuser3:
@@ -136,7 +137,7 @@ After:
   - INSERT
   - SELECT
   - UPDATE
-Granted default perms to testuser3 on pulse_university
+[OK] Granted default perms to testuser3 on pulse_university.
 [PASS] Set default privileges for testuser3 with --show-diff
 
 ▶ Current grants for testuser3:
@@ -182,12 +183,12 @@ Command: python3 ./../cli/db137.py users list
   GRANT APPLICATION_PASSWORD_ADMIN,AUDIT_ABORT_EXEMPT,AUDIT_ADMIN,AUTHENTICATION_POLICY_ADMIN,BACKUP_ADMIN,BINLOG_ADMIN,BINLOG_ENCRYPTION_ADMIN,CLONE_ADMIN,CONNECTION_ADMIN,ENCRYPTION_KEY_ADMIN,FIREWALL_EXEMPT,FLUSH_OPTIMIZER_COSTS,FLUSH_STATUS,FLUSH_TABLES,FLUSH_USER_RESOURCES,GROUP_REPLICATION_ADMIN,GROUP_REPLICATION_STREAM,INNODB_REDO_LOG_ARCHIVE,INNODB_REDO_LOG_ENABLE,PASSWORDLESS_USER_ADMIN,PERSIST_RO_VARIABLES_ADMIN,REPLICATION_APPLIER,REPLICATION_SLAVE_ADMIN,RESOURCE_GROUP_ADMIN,RESOURCE_GROUP_USER,ROLE_ADMIN,SENSITIVE_VARIABLES_OBSERVER,SERVICE_CONNECTION_ADMIN,SESSION_VARIABLES_ADMIN,SET_USER_ID,SHOW_ROUTINE,SYSTEM_USER,SYSTEM_VARIABLES_ADMIN,TABLE_ENCRYPTION_ADMIN,TELEMETRY_LOG_ADMIN,XA_RECOVER_ADMIN ON *.* TO `root`@`localhost` WITH GRANT OPTION
   GRANT ALL PRIVILEGES ON `pulse_university`.* TO `root`@`localhost`
   GRANT PROXY ON ``@`` TO `root`@`localhost` WITH GRANT OPTION
-- testuser1@localhost
-  GRANT USAGE ON *.* TO `testuser1`@`localhost`
-  GRANT SELECT, INSERT, UPDATE, DELETE ON `pulse_university`.* TO `testuser1`@`localhost`
 - testuser2@localhost
   GRANT USAGE ON *.* TO `testuser2`@`localhost`
   GRANT ALL PRIVILEGES ON `pulse_university`.* TO `testuser2`@`localhost`
+- testuser3@localhost
+  GRANT USAGE ON *.* TO `testuser3`@`localhost`
+  GRANT SELECT, INSERT, UPDATE, DELETE ON `pulse_university`.* TO `testuser3`@`localhost`
 [PASS] List all users after rename
 
 ▶ Show whoami as testuser3...
@@ -223,7 +224,7 @@ Exit code: 0
 
 ▶ Allow testuser2 to change their own password...
 Command: env DB_ROOT_USER=testuser2 DB_ROOT_PASS=Test1234! python3 ./../cli/db137.py users passwd testuser2 --new-pass Changed567!
-Password updated.
+[OK] Password updated.
 [PASS] Allow testuser2 to change their own password
 
 ▶ Verify login as testuser2 with new password...
@@ -235,8 +236,8 @@ Connected as: testuser2@%
 Command: python3 ./../cli/db137.py users drop-all
 Dropped user testuser2@%
 Dropped user testuser3@%
-Dropped user testuser1@localhost
 Dropped user testuser2@localhost
+Dropped user testuser3@localhost
 [PASS] Drop all test users
 
 ▶ Final users list...

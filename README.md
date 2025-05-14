@@ -39,10 +39,11 @@ As per the course specifications, we designed and implemented a **relational dat
   - ER and relational diagrams provided in the `diagrams/` folder
 
 - **DDL and Constraints** (`sql/`):
-  - Schema includes foreign keys, unique constraints, and data validation via `CHECK`
+  - Schema (`install.sql`) includes foreign keys, unique constraints, and data validation via `CHECK`
   - Extensive lookup tables for roles, genres, payment methods, and more
-  - Triggers enforce business logic such as resale rules, artist participation caps, and VIP limits
-  - Views and procedures support advanced query use cases and data maintenance
+  - 
+  - Triggers (`triggers.sql`) enforce business logic such as resale queue rules, artist participation caps, and VIP limits
+  - Views (`views.sql`) and procedures (`procedures.sql`) support advanced query use cases and data maintenance
 
 - **Graded SQL Queries**:
   - One script per query in `sql/queries/Qx.sql` with results in `Qx_out.txt` (x is a 2-digit number, e.g. 01)
@@ -50,26 +51,27 @@ As per the course specifications, we designed and implemented a **relational dat
   - Includes trace analysis and query plan tuning for `Q04` and `Q06`, in the respective `plan1_out.txt` and `plan2_out.txt` files
 
 - **Synthetic Data Generation**:
-  - `faker.py` (immediate data insertion) and `faker_sql.py` (query generation) create a complete, constraint-compliant festival dataset. In the second case, `load.sql` is used.
+  - `faker.py` (immediate data insertion) and `faker_sql.py` (query generation) create a complete, constraint-compliant festival dataset. In the second case, `load.sql` is being produced.
   - Designed to support all 15 graded queries with special-case data coverage
   - Generates realistic multi-year festival scenarios across diverse entities
 
 - **Command-Line Interface** (`cli/db137.py`):
+  - Used via: `db137 + <command>`
   - Full database setup and reset:
     - `create-db`, `drop-db`, `reset-db`, `load-db`, `erase-db`, `db-status`, `viewq`
   - Role-based user management:
     - `users register`, `grant`, `revoke`, `rename`, `passwd`, `list`, `drop`, `drop-all`, `whoami`, `set-defaults`
   - Query execution with export support:
-    - `q X` and `q X Y` batch runs (from query X to query Y) with output saved to the corresponding file
+    - `q X` and `q X Y` batch runs (from query X to query Y) with output saved to the corresponding file(s)
 
 - **Web Frontend**:
-  - Developed with React (Vite) and Flask backend
+  - Developed with React (Vite), Flask backend, and Python3 server
   - Key features:
     - **Login/Logout** with session-based role access
     - **Schema Overview**: Inspect tables, views, triggers, and stored procedures
-    - **Browse Schema**: Preview table contents with export options (CSV, TXT)
-    - **Run Query**: Syntax-highlighted SQL editor with output viewer
-    - **Run CLI**: Execute authorized CLI commands with live-streamed output
+    - **Browse Schema**: Preview table contents and definitions with export options (CSV, TXT), as well as definitions for triggers, procedures, and views
+    - **Run Query**: Syntax-highlighted SQL editor with output viewer and permission checks
+    - **Run CLI**: Execute authorized CLI commands with live-streamed output and permission checks
 
 - **Automated Testing**:
   - `test_cli.sh`: Tests user commands and access control logic
