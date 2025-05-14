@@ -41,7 +41,7 @@ As per the course specifications, we designed and implemented a **relational dat
 - **DDL and Constraints** (`sql/`):
   - Schema (`install.sql`) includes foreign keys, unique constraints, and data validation via `CHECK`
   - Extensive lookup tables for roles, genres, payment methods, and more
-  - 
+  - Indexes (`indexing.sql`) accelerate query performance, especially for Q01–Q15 and JOIN-intensive operations
   - Triggers (`triggers.sql`) enforce business logic such as resale queue rules, artist participation caps, and VIP limits
   - Views (`views.sql`) and procedures (`procedures.sql`) support advanced query use cases and data maintenance
 
