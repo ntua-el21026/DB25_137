@@ -19,7 +19,7 @@ Contains one file per required SQL query:
 
 - `Q01.sql` through `Q15.sql`: Solutions to the assignment's 15 core questions
 - `Q01_out.txt` through `Q15_out.txt`: Output from each query's execution using the CLI tool
-- `Q0x_plan1_out.txt` and `Q0x_plan2_out.txt`: Especially for queries 4 and 6, two output files each for the two alternative execution plans. Those files contain, apart from the query output, explain and trace results, as needed.
+- `Q0x_plan{1,2,3}_out.txt`: Especially for queries 4 and 6, two output files each for the two alternative execution plans. Those files contain, apart from the query output, explain and trace results, as needed. The third output file contains a comparisson of different join strategies for those queries.
 - All queries are written in clean SQL without ORMs, JSON, or array types
 
 ---
