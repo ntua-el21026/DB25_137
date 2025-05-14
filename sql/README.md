@@ -38,13 +38,13 @@ db137 create-db
 db137 load-db
 ```
 
-3. To run a specific query (e.g., Q8):
+3. To run a specific query (e.g., Q08):
 
 ```bash
 db137 q 8
 ```
 
-4. To run a batch of queries (e.g., Q1 to Q6):
+4. To run a batch of queries (e.g., Q01 to Q06):
 
 ```bash
 db137 q 1 6

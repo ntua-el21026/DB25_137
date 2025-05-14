@@ -1,4 +1,4 @@
-# DB25_137 – Pulse University Festival Database Project
+# DB25_137 – Pulse University Database Project
 
 This repository contains the complete implementation of the Pulse University Festival information system, developed as part of the **Databases course (Spring 2025, Team 137)** at the **School of Electrical and Computer Engineering, National Technical University of Athens (NTUA)**.
 
