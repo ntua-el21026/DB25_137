@@ -30,16 +30,19 @@
 │   ├── README.md
 │   ├── assignment.pdf
 │   ├── ddl.pdf
-│   └── organization
-│       ├── cardinality_constraints.txt
-│       ├── db_data.txt
-│       └── project_structure.txt
+│   ├── main.tex
+│   ├── organization
+│   │   ├── cardinality_constraints.txt
+│   │   ├── db_data.txt
+│   │   └── project_structure.txt
+│   └── report.pdf
 ├── frontend
 │   ├── README.md
 │   ├── index.html
 │   ├── package.json
 │   ├── postcss.config.js
 │   ├── public
+│   │   ├── frontend_images
 │   │   └── logo.jpg
 │   ├── src
 │   │   ├── App.jsx
@@ -69,11 +72,13 @@
 │   │   ├── Q04.sql
 │   │   ├── Q04_plan1_out.txt
 │   │   ├── Q04_plan2_out.txt
+│   │   ├── Q04_plan3_out.txt
 │   │   ├── Q05.sql
 │   │   ├── Q05_out.txt
 │   │   ├── Q06.sql
 │   │   ├── Q06_plan1_out.txt
 │   │   ├── Q06_plan2_out.txt
+│   │   ├── Q06_plan3_out.txt
 │   │   ├── Q07.sql
 │   │   ├── Q07_out.txt
 │   │   ├── Q08.sql
@@ -99,4 +104,4 @@
     ├── test_cli.sh
     └── test_cli_results.txt
 
-22 directories, 77 files
+23 directories, 81 files
