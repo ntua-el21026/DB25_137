@@ -14,10 +14,10 @@ id  select_type  table  partitions  type   possible_keys       key              
 ## PLAN 2 — EXPLAIN ANALYZE ##
 EXPLAIN
 -------
--> Group aggregate: avg(r.interpretation), avg(r.overall)  (cost=132 rows=333) (actual time=0.114..0.114 rows=1 loops=1)
-    -> Nested loop inner join  (cost=68.5 rows=636) (actual time=0.0168..0.0859 rows=360 loops=1)
-        -> Covering index lookup on pa using idx_perf_artist (artist_id=7)  (cost=1.56 rows=13) (actual time=0.0044..0.00614 rows=13 loops=1)
-        -> Covering index lookup on r using idx_review_perf_io (perf_id=pa.perf_id)  (cost=0.641 rows=48.9) (actual time=0.0035..0.00497 rows=27.7 loops=13)
+-> Group aggregate: avg(r.interpretation), avg(r.overall)  (cost=131 rows=330) (actual time=0.108..0.108 rows=1 loops=1)
+    -> Nested loop inner join  (cost=67.9 rows=629) (actual time=0.0159..0.0791 rows=360 loops=1)
+        -> Covering index lookup on pa using idx_perf_artist (artist_id=7)  (cost=1.56 rows=13) (actual time=0.00441..0.00607 rows=13 loops=1)
+        -> Covering index lookup on r using idx_review_perf_io (perf_id=pa.perf_id)  (cost=0.637 rows=48.4) (actual time=0.00336..0.00473 rows=27.7 loops=13)
 
 
 ## PLAN 2 — OPTIMIZER_TRACE ##
@@ -211,7 +211,7 @@ TRACE
               {
                 "table": "`Review` `r` FORCE INDEX (`idx_review_perf_io`)",
                 "table_scan": {
-                  "rows": 9582,
+                  "rows": 9727,
                   "cost": 6.5
                 }
               }
@@ -258,24 +258,24 @@ TRACE
                         {
                           "access_type": "ref",
                           "index": "idx_review_perf_io",
-                          "rows": 48.8878,
-                          "cost": 66.9939,
+                          "rows": 48.393,
+                          "cost": 66.3488,
                           "chosen": true
                         },
                         {
                           "access_type": "scan",
-                          "cost": 964.7,
-                          "rows": 9582,
+                          "cost": 979.2,
+                          "rows": 9727,
                           "chosen": false,
                           "cause": "cost"
                         }
                       ]
                     },
                     "condition_filtering_pct": 100,
-                    "rows_for_plan": 635.541,
-                    "cost_for_plan": 68.5497,
-                    "sort_cost": 635.541,
-                    "new_cost_for_plan": 704.091,
+                    "rows_for_plan": 629.109,
+                    "cost_for_plan": 67.9046,
+                    "sort_cost": 629.109,
+                    "new_cost_for_plan": 697.014,
                     "chosen": true
                   }
                 ]
@@ -294,20 +294,20 @@ TRACE
                       "chosen": false
                     },
                     {
-                      "rows_to_scan": 9582,
+                      "rows_to_scan": 9727,
                       "filtering_effect": [
                       ],
                       "final_filtering_effect": 1,
                       "access_type": "scan",
-                      "resulting_rows": 9582,
-                      "cost": 3353.95,
+                      "resulting_rows": 9727,
+                      "cost": 3404.7,
                       "chosen": true
                     }
                   ]
                 },
                 "condition_filtering_pct": 100,
-                "rows_for_plan": 9582,
-                "cost_for_plan": 3353.95,
+                "rows_for_plan": 9727,
+                "cost_for_plan": 3404.7,
                 "pruned_by_cost": true
               }
             ]

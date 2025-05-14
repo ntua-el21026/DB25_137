@@ -1,0 +1,59 @@
+
+## PLAN 3 — RESULT ##
+event_id  event_title  avg_event_rating
+--------  -----------  ----------------
+44        2021 Day 1   4.0000
+26        2018 Day 5   4.0000
+
+## PLAN 3 — EXPLAIN ##
+id  select_type  table  partitions  type  possible_keys  key   key_len  ref   rows  filtered  Extra                                     
+--  -----------  -----  ----------  ----  -------------  ----  -------  ----  ----  --------  ------------------------------------------
+1   SIMPLE       r      NULL        ALL   NULL           NULL  NULL     NULL  9727  0.07      Using where; Using temporary
+1   SIMPLE       p      NULL        ALL   NULL           NULL  NULL     NULL  260   22.31     Using where; Using join buffer (hash join)
+1   SIMPLE       t      NULL        ALL   NULL           NULL  NULL     NULL  5452  0.02      Using where; Using join buffer (hash join)
+1   SIMPLE       e      NULL        ALL   NULL           NULL  NULL     NULL  58    1.72      Using where; Using join buffer (hash join)
+1   SIMPLE       att    NULL        ALL   NULL           NULL  NULL     NULL  2000  0.7       Using where; Using join buffer (hash join)
+
+## PLAN 3 — EXPLAIN ANALYZE HASH ##
+EXPLAIN
+-------
+-> Table scan on <temporary>  (actual time=3..3 rows=2 loops=1)
+    -> Aggregate using temporary table  (actual time=3..3 rows=2 loops=1)
+        -> Inner hash join (no condition)  (cost=2249 rows=0.0067) (actual time=2.79..2.98 rows=5 loops=1)
+            -> Filter: (att.attendee_id = 42)  (cost=1.35 rows=14) (actual time=0.0864..0.28 rows=1 loops=1)
+                -> Table scan on att  (cost=1.35 rows=2000) (actual time=0.0831..0.227 rows=2000 loops=1)
+            -> Hash
+                -> Inner hash join (e.event_id = p.event_id)  (cost=1748 rows=0.0683) (actual time=2.69..2.7 rows=5 loops=1)
+                    -> Table scan on e  (cost=963e-6 rows=58) (actual time=0.00443..0.0136 rows=58 loops=1)
+                    -> Hash
+                        -> Inner hash join (t.event_id = p.event_id)  (cost=1747 rows=0.0683) (actual time=2.18..2.66 rows=5 loops=1)
+                            -> Filter: (t.attendee_id = 42)  (cost=1.51 rows=1) (actual time=0.359..0.844 rows=2 loops=1)
+                                -> Table scan on t  (cost=1.51 rows=5452) (actual time=0.0847..0.698 rows=5536 loops=1)
+                            -> Hash
+                                -> Inner hash join (p.perf_id = r.perf_id)  (cost=1146 rows=373) (actual time=1.78..1.81 rows=5 loops=1)
+                                    -> Table scan on p  (cost=0.942 rows=260) (actual time=0.0181..0.0364 rows=260 loops=1)
+                                    -> Hash
+                                        -> Filter: (r.attendee_id = 42)  (cost=979 rows=6.42) (actual time=0.681..1.75 rows=5 loops=1)
+                                            -> Table scan on r  (cost=979 rows=9727) (actual time=0.135..1.46 rows=9733 loops=1)
+
+
+## PLAN 3 — EXPLAIN ANALYZE NESTED LOOP ##
+EXPLAIN
+-------
+-> Table scan on <temporary>  (actual time=8.23..8.23 rows=2 loops=1)
+    -> Aggregate using temporary table  (actual time=8.22..8.22 rows=2 loops=1)
+        -> Nested loop inner join  (cost=560954 rows=5217) (actual time=1.11..8.2 rows=5 loops=1)
+            -> Nested loop inner join  (cost=411491 rows=373) (actual time=1.06..7.04 rows=5 loops=1)
+                -> Nested loop inner join  (cost=409237 rows=373) (actual time=1.05..6.97 rows=5 loops=1)
+                    -> Nested loop inner join  (cost=1148 rows=373) (actual time=0.686..1.98 rows=5 loops=1)
+                        -> Filter: (r.attendee_id = 42)  (cost=979 rows=6.42) (actual time=0.663..1.7 rows=5 loops=1)
+                            -> Table scan on r  (cost=979 rows=9727) (actual time=0.0979..1.41 rows=9733 loops=1)
+                        -> Filter: (p.perf_id = r.perf_id)  (cost=1.15 rows=58) (actual time=0.0273..0.0538 rows=1 loops=5)
+                            -> Table scan on p  (cost=1.15 rows=260) (actual time=0.0129..0.0461 rows=260 loops=5)
+                    -> Filter: ((t.event_id = p.event_id) and (t.attendee_id = 42))  (cost=550 rows=1) (actual time=0.464..0.998 rows=1 loops=5)
+                        -> Table scan on t  (cost=550 rows=5452) (actual time=0.048..0.806 rows=5536 loops=5)
+                -> Filter: (e.event_id = p.event_id)  (cost=0.25 rows=1) (actual time=0.00909..0.0145 rows=1 loops=5)
+                    -> Table scan on e  (cost=0.25 rows=58) (actual time=0.0025..0.0124 rows=58 loops=5)
+            -> Filter: (att.attendee_id = 42)  (cost=201 rows=14) (actual time=0.0465..0.231 rows=1 loops=5)
+                -> Table scan on att  (cost=201 rows=2000) (actual time=0.0436..0.176 rows=2000 loops=5)
+

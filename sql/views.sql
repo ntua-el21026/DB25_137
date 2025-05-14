@@ -119,18 +119,14 @@ CREATE VIEW View_Genre_Pairs AS
 SELECT
     LEAST(ag1.genre_id, ag2.genre_id)    AS genre_id1,
     GREATEST(ag1.genre_id, ag2.genre_id) AS genre_id2,
-    COUNT(DISTINCT ag1.artist_id)        AS artist_count
-FROM Artist_Genre ag1
-JOIN Artist_Genre ag2
-    ON ag1.artist_id = ag2.artist_id AND ag1.genre_id < ag2.genre_id
-WHERE ag1.artist_id IN (
-    SELECT DISTINCT pa.artist_id
-    FROM Performance_Artist pa
-    JOIN Performance p ON pa.perf_id  = p.perf_id
-    JOIN Event       e ON p.event_id  = e.event_id
-    JOIN Festival    f ON e.fest_year = f.fest_year
-    WHERE f.fest_year < YEAR(CURDATE())
-)
+    COUNT(DISTINCT pa.perf_id)           AS performance_count
+FROM Performance_Artist pa
+JOIN Artist_Genre ag1 ON pa.artist_id = ag1.artist_id
+JOIN Artist_Genre ag2 ON pa.artist_id = ag2.artist_id AND ag1.genre_id < ag2.genre_id
+JOIN Performance p    ON pa.perf_id = p.perf_id
+JOIN Event e          ON p.event_id = e.event_id
+JOIN Festival f       ON e.fest_year = f.fest_year
+WHERE f.fest_year < YEAR(CURDATE())
 GROUP BY genre_id1, genre_id2;
 
 /* ------------------------------------------------------------

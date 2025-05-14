@@ -18,17 +18,17 @@ id  select_type  table       partitions  type    possible_keys                  
 ## PLAN 1 — EXPLAIN ANALYZE ##
 EXPLAIN
 -------
--> Table scan on View_Attendee_Event_Rating  (cost=2.5..2.5 rows=0) (actual time=0.0557..0.0558 rows=2 loops=1)
-    -> Materialize  (cost=0..0 rows=0) (actual time=0.0553..0.0553 rows=2 loops=1)
-        -> Table scan on <temporary>  (actual time=0.0467..0.047 rows=2 loops=1)
-            -> Aggregate using temporary table  (actual time=0.0458..0.0458 rows=2 loops=1)
-                -> Nested loop left join  (cost=53.9 rows=116) (actual time=0.0159..0.0355 rows=9 loops=1)
-                    -> Nested loop inner join  (cost=13.3 rows=116) (actual time=0.0106..0.0158 rows=9 loops=1)
-                        -> Nested loop inner join  (cost=1.15 rows=2) (actual time=0.00742..0.00901 rows=2 loops=1)
-                            -> Covering index lookup on t using attendee_id (attendee_id=42)  (cost=0.45 rows=2) (actual time=0.00417..0.00459 rows=2 loops=1)
-                            -> Single-row index lookup on e using PRIMARY (event_id=t.event_id)  (cost=0.3 rows=1) (actual time=0.00171..0.00173 rows=1 loops=2)
-                        -> Covering index lookup on p using uq_event_seq (event_id=t.event_id)  (cost=3.17 rows=58) (actual time=0.00208..0.00301 rows=4.5 loops=2)
-                    -> Single-row index lookup on r using perf_id (perf_id=p.perf_id, attendee_id=42)  (cost=0.251 rows=1) (actual time=0.00206..0.00207 rows=0.556 loops=9)
+-> Table scan on View_Attendee_Event_Rating  (cost=2.5..2.5 rows=0) (actual time=0.086..0.0862 rows=2 loops=1)
+    -> Materialize  (cost=0..0 rows=0) (actual time=0.0855..0.0855 rows=2 loops=1)
+        -> Table scan on <temporary>  (actual time=0.0743..0.0746 rows=2 loops=1)
+            -> Aggregate using temporary table  (actual time=0.0735..0.0735 rows=2 loops=1)
+                -> Nested loop left join  (cost=53.9 rows=116) (actual time=0.0383..0.061 rows=9 loops=1)
+                    -> Nested loop inner join  (cost=13.3 rows=116) (actual time=0.0149..0.0211 rows=9 loops=1)
+                        -> Nested loop inner join  (cost=1.15 rows=2) (actual time=0.011..0.0131 rows=2 loops=1)
+                            -> Covering index lookup on t using attendee_id (attendee_id=42)  (cost=0.45 rows=2) (actual time=0.00618..0.00667 rows=2 loops=1)
+                            -> Single-row index lookup on e using PRIMARY (event_id=t.event_id)  (cost=0.3 rows=1) (actual time=0.00251..0.00252 rows=1 loops=2)
+                        -> Covering index lookup on p using uq_event_seq (event_id=t.event_id)  (cost=3.17 rows=58) (actual time=0.00254..0.00362 rows=4.5 loops=2)
+                    -> Single-row index lookup on r using perf_id (perf_id=p.perf_id, attendee_id=42)  (cost=0.251 rows=1) (actual time=0.00426..0.00427 rows=0.556 loops=9)
 
 
 ## PLAN 1 — OPTIMIZER_TRACE ##
@@ -501,8 +501,8 @@ TRACE
                       "table": "`Review` `r`",
                       "range_analysis": {
                         "table_scan": {
-                          "rows": 9582,
-                          "cost": 966.8
+                          "rows": 9727,
+                          "cost": 981.3
                         },
                         "potential_range_indexes": [
                           {
@@ -537,7 +537,7 @@ TRACE
                         ],
                         "best_covering_index_scan": {
                           "index": "idx_review_perf_attendee_overall",
-                          "cost": 962.246,
+                          "cost": 976.803,
                           "chosen": true
                         },
                         "setup_range_conditions": [

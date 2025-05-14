@@ -471,18 +471,18 @@ def run_query(user_mgr: UserManager, start: int, end: int | None, database: str)
             click.echo(f"[SKIP] Missing {sql_path.name}")
             continue
 
-        if q in (4, 6):                                     # multi-plan
-            base = QUERIES_DIR / f"Q{q:02d}_plan"
-            user_mgr.run_multi_plan_query_to_files(sql_path, base,
-                                                   database=database)
-            _print_ok(f"{sql_path.name} → {base.name}1_out.txt, {base.name}2_out.txt")
+        if q in (4, 6):
+            base   = QUERIES_DIR / f"Q{q:02d}_plan"
+            count = user_mgr.run_multi_plan_query_to_files(sql_path, base, database=database)
+            files = ", ".join(f"{base.name}{n}_out.txt" for n in range(1, count + 1))
+            _print_ok(f"{sql_path.name} → {files}")
+            continue
 
-        else:                                               # normal
+        else:
             out_path = QUERIES_DIR / f"Q{q:02d}_out.txt"
             user_mgr.run_query_to_file(sql_path, out_path,
                                        database=database)
             _print_ok(f"{sql_path.name} → {out_path.name}")
-
 
 if __name__ == "__main__":
     cli()
